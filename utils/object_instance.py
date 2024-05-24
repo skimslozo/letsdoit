@@ -4,7 +4,7 @@ import imageio
 import numpy as np
 from pathlib import Path
 
-from misc import inverseRigid
+from letsdoit.utils.misc import inverseRigid
 
 class ObjectInstance():
     def __init__(self, bbox, mask, label, confidence, img_path):
@@ -18,7 +18,7 @@ class ObjectInstance():
         self.intrinsic = self.get_intrinsics()
         self.depth = self.get_depth()
         self.extrinsic = None #TODO: adpat this, if we need the extrinsic here at some moment
-        self.center_3d = self.get_mask_center_3d(mask)
+        self.center_3d = self.get_mask_center_3d()
 
     
     def get_intrinsics(self):

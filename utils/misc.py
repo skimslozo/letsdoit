@@ -1,4 +1,5 @@
 import numpy as np
+from enum import Enum
 
 class SpatialPrimitive(Enum):
     ABOVE = 1

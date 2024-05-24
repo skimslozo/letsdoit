@@ -1,17 +1,11 @@
 import os
+import cv2
 import sys
-import numpy as np
-import json
 import torch
 import itertools
-import imageio
-import uuid
 from PIL import Image
-import cv2
-import logging
-import matplotlib.pyplot as plt
-from typing import List, Dict
-from utils.misc import SpatialPrimitive
+from pathlib import Path
+import numpy as np
 
 
 # Append paths to sys.path for importing modules from other directories
@@ -19,10 +13,10 @@ sys.path.append(os.path.join(os.getcwd(), "GroundingDINO"))
 sys.path.append(os.path.join(os.getcwd(), "segment_anything"))
 
 # Import from GroundingDINO
-from enum import Enum
 from masks_finder import MasksFinder
 from clip_retriever import ClipRetriever
-from pathlib import Path
+from letsdoit.utils.misc import SpatialPrimitive
+from letsdoit.utils.object_instance import ObjectInstance
 import GroundingDINO.groundingdino.datasets.transforms as T
 from GroundingDINO.groundingdino.models import build_model
 from GroundingDINO.groundingdino.util.slconfig import SLConfig

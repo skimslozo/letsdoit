@@ -21,7 +21,7 @@ import GroundingDINO.groundingdino.datasets.transforms as T
 from GroundingDINO.groundingdino.models import build_model
 from GroundingDINO.groundingdino.util.slconfig import SLConfig
 from GroundingDINO.groundingdino.util.utils import clean_state_dict, get_phrases_from_posmap
-from utils.object_instance import ObjectInstance
+from letsdoit.utils.object_instance import ObjectInstance
 
 # Import from segment_anything
 from segment_anything import (
