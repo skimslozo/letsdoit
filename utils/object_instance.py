@@ -2,6 +2,7 @@ import cv2
 import uuid
 import imageio
 import numpy as np
+import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from pathlib import Path
 from letsdoit.utils.misc import inverseRigid
@@ -137,5 +138,33 @@ class ObjectInstance():
         ax.plot(self.center_2d[0], self.center_2d[1], 'o',  color=col, markersize=10)
     
     def plot_3d(self):
-        pass
+        fig = go.Figure()
+        mask_points = np.argwhere(self.mask)
+        mask_points = mask_points[:, [1, 0]].T
+        mask_3d = self._get_3d(mask_points)
+        
+        mask_color = np.random.rand(3,)
+        fig.add_trace(go.Scatter3d(
+            x=mask_3d[0, :],
+            y=mask_3d[1, :],
+            z=mask_3d[2, :],
+            mode='markers',
+            marker=dict(size=2, color=mask_color, opacity=0.8),
+            name='Mask Points'
+        ))
+        center_3d = self.center_3d
+        center_color = np.random.rand(3,)
+        fig.add_trace(go.Scatter3d(
+            x=center_3d[0, :],
+            y=center_3d[1, :],
+            z=center_3d[2, :],
+            mode='markers',
+            marker=dict(size=5, color=center_color, opacity=1.0),
+            name='Mask Center'
+        ))
+        fig.update_layout(title='3D Mask and Center Point',
+                          scene=dict(xaxis_title='X Axis',
+                                     yaxis_title='Y Axis',
+                                     zaxis_title='Z Axis'))
+        fig.show()
 
