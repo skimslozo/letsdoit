@@ -205,8 +205,8 @@ def get_spatial_primitive_score(primitive: SpatialPrimitive, target: ObjectInsta
 
 def evaluate_next_to(target: ObjectInstance, reference: ObjectInstance):
     # Calculate the 3D center coordinates for both target and reference objects
-    target_center_3d = target.get_mask_center_3d()
-    reference_center_3d = reference.get_mask_center_3d()
+    target_center_3d = target._get_mask_center_3d()
+    reference_center_3d = reference._get_mask_center_3d()
 
     # Calculate the Euclidean distance between the 3D centers of the target and reference objects
     distance = np.linalg.norm(np.array(target_center_3d) - np.array(reference_center_3d))
