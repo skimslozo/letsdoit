@@ -13,17 +13,59 @@ class ObjectInstance():
         self.label = label
         self.confidence = confidence
         self.id = str(uuid.uuid4())
-        self.mask_center_2d = self._get_mask_center()
         self.img_path = Path(img_path)
-        self.intrinsic = self.get_intrinsics()
-        self.depth = self.get_depth()
-        self.extrinsic = None #TODO: adpat this, if we need the extrinsic here at some moment
-        self.center_3d = self.get_mask_center_3d()
 
+        self._intrinsic = None
+        self._extrinsic = None #TODO: adpat this, if we need the extrinsic here at some moment
+        self._image = None
+        self._depth = None
+        self._center_2d = None
+        self._center_3d = None
     
+    @property
+    def intrinsic(self):
+        if self._intrinsic is None:
+            self._intrinsic = self.get_intrinsics()
+        return self._intrinsic
+
+    @property
+    def extrinsic(self):
+        if self._extrinsic is None:
+            self._extrinsic = self.get_extrinsics()
+        return self.extrinsic
+    
+    @property
+    def image(self):
+        if self._image is None:
+            self._image = cv2.imread(str(self.img_path))
+        return self._image
+
+    @property
+    def depth(self):
+        if self._depth is None:
+            self._depth = self.get_depth()
+        return self._depth
+
+    @property
+    def center_2d(self):
+        if self._center_2d is None:
+            self._center_2d = self._get_mask_center()
+        return self._center_2d
+
+    @property
+    def center_3d(self):
+        if self._center_3d is None:
+            self._center_3d = self.get_mask_center_3d()
+        return self._center_3d
+
     def get_intrinsics(self):
         intrinsic_path = self.img_path.parent.parent / 'intrinsic_rotated' / 'intrinsic_color.txt'
         return np.loadtxt(intrinsic_path)
+    
+    def get_extrinsics(self):
+        #TODO: just made an assumption on how extrinsics are saved/called, to be fixed later
+        extrinsic_path = self.img_path.parent.parent / 'extrinsic_rotated' / self.img_path.name
+        return np.loadtxt(extrinsic_path)
     
     def get_depth(self):
         depth_path = self.img_path.parent.parent / 'depth_rotated' / self.img_path.name
@@ -65,16 +107,20 @@ class ObjectInstance():
         # Calculate the 3D coordinates of the points
         mask_3d = depth_values * np.matmul(K_inv, pix)
 
-        if self.extrinsic is None:
-            return mask_3d
-        else:
-            extrinsic_inv = inverseRigid(self.extrinsic)
-            mask_3d = extrinsic_inv @ mask_3d
-            return mask_3d
+        extrinsic_inv = inverseRigid(self.extrinsic)
+        mask_3d = extrinsic_inv @ mask_3d
+        return mask_3d
         
     def get_mask_center_3d(self):
         '''
         Get the 3D coordinates of the center point of a mask
         '''
-        center_in = np.asarray(self.mask_center_2d).reshape(2, 1)
+        center_in = np.asarray(self.center_2d).reshape(2, 1)
         return self.get_3d(center_in)
+
+    def plot_2d(self):
+        pass
+    
+    def plot_3d(self):
+        pass
+
