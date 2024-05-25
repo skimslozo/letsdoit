@@ -47,7 +47,7 @@ class MasksFinder:
         self.mask_predictor = SamPredictor(sam_hq_model_registry[sam_version](checkpoint=sam_hq_checkpoint).to(self.device))
 
 
-    def get_objects_masks_from_imgs(self, image_paths: List[str], objects: str) -> List[dict]:
+    def get_masks_from_imgs(self, images: List[np.ndarray], objects: str) -> List[dict]:
         """
         Given a list of images extract masks around objects that fit the 'objects' prompt.
 
@@ -67,48 +67,50 @@ class MasksFinder:
         if isinstance(objects, list):
             objects = self._objects_list2str(objects)
 
-        all_instances = []
-        for image_path in tqdm(image_paths):
-            object_instances = self.get_objects_masks_from_img(image_path, objects)
-            if object_instances is None:
+        masks = []
+        bboxes = []
+        confidences = []
+        image_ids = []
+        labels = []
+        for image_idx, image in enumerate(tqdm(images)):
+            masks_, bboxes_, confidences_ = self.get_masks_from_img(image, objects)
+            if len(masks_) == 0:
                 continue
-            all_instances = all_instances + object_instances # Do + instead of append to keep all ObjectInstance objects within the same list for a single object type
-        return all_instances
+
+            masks += masks_
+            bboxes += bboxes_
+            confidences += confidences_
+            image_ids += [image_idx] * len(masks_)
+            labels += [objects] * len(masks_)
+
+        return image_ids, masks, bboxes, confidences, labels
 
 
-    def get_objects_masks_from_img(self, image_path: str, objects: str) -> List | None:
+    def get_masks_from_img(self, image: np.ndarray, objects: str) -> List | None:
         """Same as for self.get_objects_masks_from_imgs but for only one image"""
 
         if isinstance(objects, list):
             objects = self._objects_list2str(objects)
 
-        image, image_pil, image_cv2 = self._load_image(image_path)
+        image_tensor, image_pil, image_cv2 = self._convert_image(image)
         size = image_pil.size
         H, W = size[1], size[0]
 
-        boxes_filt, pred_phrases, confidence = self._get_grounding_output(self.model, image, objects, self.box_threshold, 
+        boxes_filt, pred_phrases, confidence = self._get_grounding_output(self.model, image_tensor, objects, self.box_threshold, 
                                                                           self.text_threshold, device=self.device)
         if boxes_filt.shape[0 ]== 0:
-            return None
+            return [], [], []
         
         for i in range(boxes_filt.size(0)):
             boxes_filt[i] = boxes_filt[i] * torch.Tensor([W, H, W, H])
             boxes_filt[i][:2] -= boxes_filt[i][2:] / 2
             boxes_filt[i][2:] += boxes_filt[i][:2]
 
-        boxes_filt = boxes_filt.cpu()
         masks = self._predict_masks(image_cv2, boxes_filt)
-
-        objects_instances_list = []
-        for i, label in enumerate(pred_phrases):
-            objects_instances_list.append(ObjectInstance(bbox=boxes_filt[i].numpy(),
-                                                         mask=masks[i].cpu().squeeze().numpy(),
-                                                         label=label,
-                                                         confidence=confidence[i],
-                                                         img_path=image_path
-                                                         ))
-
-        return objects_instances_list
+        masks = [mask.cpu().squeeze().numpy() for mask in masks]
+        bboxes = [bbox.cpu().numpy() for bbox in boxes_filt]
+        
+        return masks, bboxes, confidence
 
     @staticmethod
     def _objects_list2str(objects):
@@ -132,21 +134,18 @@ class MasksFinder:
 
     
     @staticmethod
-    def _load_image(image_path):
-        # Load PIL image
-        image_pil = Image.open(image_path).convert("RGB")
+    def _convert_image(image: np.ndarray):
+
+        image_cv2 = image  # following the naming of the original function
+        image_pil = Image.fromarray(image).convert("RGB")
         transform = T.Compose([
             T.RandomResize([800], max_size=1333),
             T.ToTensor(),
             T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ])
-        image, _ = transform(image_pil, None)
+        image_tensor, _ = transform(image_pil, None)
 
-        # Load CV2 image
-        image_cv2 = cv2.imread(image_path)
-        image_cv2 = cv2.cvtColor(image_cv2, cv2.COLOR_BGR2RGB)
-
-        return image, image_pil, image_cv2
+        return image_tensor, image_pil, image_cv2
 
 
     def _load_model(self):

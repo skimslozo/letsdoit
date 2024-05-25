@@ -45,3 +45,5 @@ def inverseRigid(H):
 
     return invH
 
+def select_ids(array, ids):
+    return [array[idx] for idx in ids]

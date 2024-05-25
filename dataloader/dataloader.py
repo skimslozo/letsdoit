@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import numpy as np
 from tqdm import tqdm
@@ -41,8 +41,7 @@ class DataLoader:
         return video_paths
     
 
-
-    def _get_framepaths_intrisics_poses(self, visit_id: str, video_id: str, format='rgb', asset_type="lowres_wide"):
+    def _get_framepaths_intrisics_poses(self, visit_id: str, video_id: str, format='rgb', asset_type="lowres_wide", sample_freq=1):
         """
         Return the frame paths, the intrinsics and the poses for a given visit id, video id and format (either depth or rgb).
         """
@@ -52,9 +51,10 @@ class DataLoader:
                                                                                     format=format,
                                                                                     asset_type=asset_type)
         
-        # convert from dictionary to list
-        frame_paths = [frame_paths[frame_id] for frame_id in frame_ids]
-        intrinsics = [intrinsics[frame_id] for frame_id in frame_ids]
+        # convert from dictionary to list and sample according to sample_freq
+        frame_paths = [frame_paths[frame_id] for i, frame_id in enumerate(frame_ids) if i%sample_freq == 0]
+        intrinsics = [intrinsics[frame_id] for i, frame_id in enumerate(frame_ids) if i%sample_freq == 0]
+        frame_ids = [frame_id for i, frame_id in enumerate(frame_ids) if i%sample_freq == 0]
         
         camera_trajectory = self.parser.get_camera_trajectory(visit_id, video_id)
 
@@ -69,41 +69,37 @@ class DataLoader:
         return frame_paths, intrinsics, poses
     
 
-    def get_image_paths(self, visit_id: str, video_id: str, asset_type="lowres_wide"):
+    def get_image_paths(self, visit_id: str, video_id: str, asset_type="lowres_wide", sample_freq=1):
         """
         return the path to all the images in the scene. Plus intrinsics and poses
         """
 
-        image_paths, intrinsics, poses = self._get_framepaths_intrisics_poses(visit_id, video_id, format='rgb', asset_type=asset_type)
+        image_paths, intrinsics, poses = self._get_framepaths_intrisics_poses(visit_id, video_id, format='rgb', asset_type=asset_type, sample_freq=sample_freq)
         return image_paths, intrinsics, poses
     
 
-    def get_depth_paths(self, visit_id: str, video_id: str, asset_type="lowres_wide"):
+    def get_depth_paths(self, visit_id: str, video_id: str, asset_type="lowres_wide", sample_freq=1):
         """
         return the path to all the depths in the scene. Plus intrinsics and poses
         """
 
-        depth_paths, intrinsics, poses = self._get_framepaths_intrisics_poses(visit_id, video_id, format='depth', asset_type=asset_type)    
+        depth_paths, intrinsics, poses = self._get_framepaths_intrisics_poses(visit_id, video_id, format='depth', asset_type=asset_type, sample_freq=sample_freq)    
         return depth_paths, intrinsics, poses
     
 
-    def _get_frames_framepaths_intrinsics_poses(self, visit_id, video_id, format='rgb', asset_type="lowres_wide", sample_freq=1):
+    def _get_frames_framepaths_intrinsics_poses_orientations(self, visit_id, video_id, format='rgb', asset_type="lowres_wide", sample_freq=1):
         """
         Return all the frames for a given scene  and format as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
         """
 
-        frame_paths, intrinsics, poses = self._get_framepaths_intrisics_poses(visit_id, video_id, format=format, asset_type=asset_type)
-
-        # sample the arrays according to the sample_frequency
-        frame_paths = [x for i, x in enumerate(frame_paths) if i % sample_freq == 0]
-        intrinsics = [x for i, x in enumerate(intrinsics) if i % sample_freq == 0]
-        poses = [x for i, x in enumerate(poses) if i % sample_freq == 0]
+        frame_paths, intrinsics, poses = self._get_framepaths_intrisics_poses(visit_id, video_id, format=format, asset_type=asset_type, sample_freq=sample_freq)
 
         frames = []
+        orientations = []
 
         description = f'Loading {format} frames from visit {visit_id} and video {video_id}'
-        for frame_path, pose in tqdm(zip(frame_paths, poses), total=len(frame_paths), desc=description):
+        for i, (frame_path, pose) in tqdm(enumerate(zip(frame_paths, poses)), total=len(frame_paths), desc=description):
             if format == 'rgb':
                 frame = self.parser.read_rgb_frame(frame_path)
             else:
@@ -112,19 +108,52 @@ class DataLoader:
             frame = rotate_pose(frame, orientation)
             frames.append(frame)
 
-        return frames, frame_paths, intrinsics, poses
+            # Rotate intrinsics, replace the old one
+            intrinsic = self._rotate_intrinsic(intrinsics[i], orientation)
+            intrinsics[i] = intrinsic
 
+            orientations.append(orientation)
+
+        return frames, frame_paths, intrinsics, poses, orientations
+
+    def _rotate_intrinsic(self, intrinsic: Tuple[float], orientation: int) -> np.ndarray:
+        '''Based on original orientation, adjust intrinsics matrix for upright-oriented image'''
+        w, h, au, av, u0, v0 = intrinsic
+        match orientation:
+            case 0: # upright -> normal
+                intrinsic_rotated = np.array([[au, 0, u0],
+                                              [0, av, v0],
+                                              [0, 0, 1]])
+
+            case 1: # left -> apply 90deg clockwise rotation
+                intrinsic_rotated = np.array([[0, -av, h-v0],
+                                              [au, 0, u0],
+                                              [0, 0, 1]])
+
+            case 2: # upisde-down -> apply 180 deg rotation
+                intrinsic_rotated = np.array([[-au, 0, w-u0],
+                                              [0, -av, h-v0],
+                                              [0, 0, 1]])
+
+            case 3: # right -> apply 90 deg counter-clockwise rotation
+                intrinsic_rotated = np.array([[0, au, v0],
+                                              [-av, 0, w-u0],
+                                              [0, 0, 1]])
+            case _:
+                raise ValueError(f'Unexpected orientation int provided: {orientation}')
+    
+        return intrinsic_rotated
 
     def get_images(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
         """
         Return all the images for a given scene as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
         """
-        images, image_paths, intrinsics, poses = self._get_frames_framepaths_intrinsics_poses(visit_id, video_id, format='rgb', 
+        images, image_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='rgb', 
                                                                                               asset_type=asset_type,
                                                                                               sample_freq=sample_freq)
 
-        return images, image_paths, intrinsics, poses
+        return images, image_paths, intrinsics, poses, orientations
     
 
     def get_depths(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
@@ -132,11 +161,12 @@ class DataLoader:
         Return all the depths for a given scene as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
         """
-        depths, depth_paths, intrinsics, poses = self._get_frames_framepaths_intrinsics_poses(visit_id, video_id, format='depth', 
+        depths, depth_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='depth', 
                                                                                               asset_type=asset_type,
                                                                                               sample_freq=sample_freq)
 
-        return depths, depth_paths, intrinsics, poses
+        return depths, depth_paths, intrinsics, poses, orientations
+
 
     def get_instructions(self, instructions_path: str) -> Dict:
         """

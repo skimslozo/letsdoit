@@ -7,46 +7,63 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from letsdoit.utils.misc import inverseRigid
 
+
+
+def initialize_object_instances(images, depths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations):
+    """
+    Initialize a list of ObjectInstance objects
+    """
+
+    object_instances = []
+    
+    for image, depth, bbox, mask, label, confidence, intrinsic, extrinsic, orientation in zip(images, 
+                                                                                                   depths,
+                                                                                                   bboxes, 
+                                                                                                   masks, 
+                                                                                                   labels, 
+                                                                                                   confidences, 
+                                                                                                   intrinsics, 
+                                                                                                   extrinsics, 
+                                                                                                   orientations):
+        
+        object_instances.append(ObjectInstance(image,
+                                               depth,
+                                               bbox,
+                                               mask,
+                                               label,
+                                               confidence,
+                                               intrinsic,
+                                               extrinsic,
+                                               orientation))
+
+    return object_instances
+        
+
 class ObjectInstance():
-    def __init__(self, bbox, mask, label, confidence, img_path):
+    def __init__(self, image, depth, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation):
         self.bbox = bbox
         self.mask = mask
         self.label = label
         self.confidence = confidence
         self.id = str(uuid.uuid4())
-        self.img_path = Path(img_path)
+        self.orientation = orientation
 
-        self._intrinsic = None
-        self._extrinsic = None
-        self._image = None
-        self._depth = None
+        self.intrinsic = intrinsic
+        self.extrinsic = extrinsic
+        self.depth = depth
+        self.image = image
         self._center_2d = None
         self._center_3d = None
+        self._mask_3d = None
+
+    @property
+    def mask_3d(self):
+        if self._mask_3d is None:
+            mask_points = np.argwhere(self.mask)
+            mask_points = mask_points[:, [1, 0]].T
+            self._mask_3d = self._get_3d(mask_points)
+        return self._mask_3d
     
-    @property
-    def intrinsic(self):
-        if self._intrinsic is None:
-            self._intrinsic = self._get_intrinsics()
-        return self._intrinsic
-
-    @property
-    def extrinsic(self):
-        if self._extrinsic is None:
-            self._extrinsic = self._get_extrinsics()
-        return self.extrinsic
-    
-    @property
-    def image(self):
-        if self._image is None:
-            self._image = cv2.imread(str(self.img_path))
-        return self._image
-
-    @property
-    def depth(self):
-        if self._depth is None:
-            self._depth = self._get_depth()
-        return self._depth
-
     @property
     def center_2d(self):
         if self._center_2d is None:
@@ -56,21 +73,8 @@ class ObjectInstance():
     @property
     def center_3d(self):
         if self._center_3d is None:
-            self._center_3d = self._get_mask_center_3d()
+            self._center_3d = np.mean(self.mask_3d, axis=1)
         return self._center_3d
-
-    def _get_intrinsics(self):
-        intrinsic_path = self.img_path.parent.parent / 'intrinsic_rotated' / 'intrinsic_color.txt'
-        return np.loadtxt(intrinsic_path)
-    
-    def _get_extrinsics(self):
-        #TODO: just made an assumption on how extrinsics are saved/called, to be fixed later
-        extrinsic_path = self.img_path.parent.parent / 'extrinsic_rotated' / self.img_path.name
-        return np.loadtxt(extrinsic_path)
-    
-    def _get_depth(self):
-        depth_path = self.img_path.parent.parent / 'depth_rotated' / self.img_path.name
-        return imageio.v2.imread(depth_path) / 1000 
     
     def _get_mask_center(self):
         # Calculate moments of the binary image
@@ -94,12 +98,9 @@ class ObjectInstance():
 
          Returns:
             mask_3d (numpy.ndarray): a 3 x N matrix of metric coordinats for the provided points.  
-                Note: if extrinsic matrix is not specified, we just project to 3D in camera coordinate system. If specified,
-                we use the rotation and translation matrix to further project the points to world coordinate system (!! NOT IMPLEMENTED !!)
         '''
         # Get inverse intrinsics
         K_inv = np.linalg.inv(self.intrinsic)
-
 
         # Get depth values corresponding to image points
         ones = np.ones((1, points.shape[1]))
@@ -107,17 +108,13 @@ class ObjectInstance():
         depth_values = self.depth[pix[1, :], pix[0, :]]
         # Calculate the 3D coordinates of the points
         mask_3d = depth_values * np.matmul(K_inv, pix)
-
+        # Convert to homogeneous coordinates for transformation to world coords
+        mask_3d = np.vstack([mask_3d, np.ones((1, mask_3d.shape[1]))])
         extrinsic_inv = inverseRigid(self.extrinsic)
         mask_3d = extrinsic_inv @ mask_3d
+        # Convert back to 3D
+        mask_3d = mask_3d[:-1, :]
         return mask_3d
-        
-    def _get_mask_center_3d(self):
-        '''
-        Get the 3D coordinates of the center point of a mask
-        '''
-        center_in = np.asarray(self.center_2d).reshape(2, 1)
-        return self._get_3d(center_in)
 
     def plot_2d(self):
         plt.figure(figsize=(10, 10))
@@ -139,10 +136,17 @@ class ObjectInstance():
     
     def plot_3d(self):
         fig = go.Figure()
-        mask_points = np.argwhere(self.mask)
-        mask_points = mask_points[:, [1, 0]].T
-        mask_3d = self._get_3d(mask_points)
-        
+
+        num_points = self.mask_3d.shape[1]
+
+        # Subsample for viz, if too many points:
+        if num_points > 1e4:
+            subsample_points = num_points // 100
+            indices = np.linspace(0, self.mask_3d.shape[1] - 1, subsample_points, dtype=int)
+            mask_3d = self.mask_3d[:, indices]
+        else:
+            mask_3d = self.mask_3d
+
         mask_color = np.random.rand(3,)
         fig.add_trace(go.Scatter3d(
             x=mask_3d[0, :],
@@ -152,7 +156,8 @@ class ObjectInstance():
             marker=dict(size=2, color=mask_color, opacity=0.8),
             name='Mask Points'
         ))
-        center_3d = self.center_3d
+
+        center_3d = np.expand_dims(self.center_3d, -1)
         center_color = np.random.rand(3,)
         fig.add_trace(go.Scatter3d(
             x=center_3d[0, :],
@@ -162,9 +167,11 @@ class ObjectInstance():
             marker=dict(size=5, color=center_color, opacity=1.0),
             name='Mask Center'
         ))
+
         fig.update_layout(title='3D Mask and Center Point',
-                          scene=dict(xaxis_title='X Axis',
-                                     yaxis_title='Y Axis',
-                                     zaxis_title='Z Axis'))
+                        scene=dict(xaxis_title='X Axis',
+                                    yaxis_title='Y Axis',
+                                    zaxis_title='Z Axis'))
+
         fig.show()
 
