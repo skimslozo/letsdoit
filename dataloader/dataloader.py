@@ -60,10 +60,13 @@ class DataLoader:
 
         poses = []
 
-        for frame_id in frame_ids:
+        for i, frame_id in enumerate(frame_ids):
             pose = self.parser.get_nearest_pose(frame_id,
-                                                camera_trajectory)
-            
+                                                camera_trajectory, use_interpolation=True)
+            if pose is None:
+                frame_paths.pop(i)
+                intrinsics.pop(i)
+                continue
             poses.append(pose)
 
         return frame_paths, intrinsics, poses
@@ -109,12 +112,69 @@ class DataLoader:
             frames.append(frame)
 
             # Rotate intrinsics, replace the old one
-            intrinsic = self._rotate_intrinsic(intrinsics[i], orientation)
+            intrinsic = self._rotate_intrinsic(intrinsics[i], 0) #TODO: change back, now keep intrinsics as-is
             intrinsics[i] = intrinsic
 
             orientations.append(orientation)
 
         return frames, frame_paths, intrinsics, poses, orientations
+
+
+    """
+    def _rotate_intrinsic(self, intrinsic: Tuple[float], orientation: int) -> np.ndarray:
+        '''rotate the intrinsic matrix with the following chain of transformations:
+        tc1c -> translation to shift the zero of the uv coordinate system from top-left angle
+        to the center of the image. tc1c = -c where c = (w/2, h/2)
+
+        R12 -> rotate from original matrix to r
+        
+        '''
+        w, h, au, av, u0, v0 = intrinsic
+        intrinsic_matrix = np.array([[au, 0, u0],
+                                     [0, av, v0],
+                                     [0, 0, 1]])
+        c = np.array([w/2, h/2])
+
+        # apply swap when the image is rotated such that the previous x and y axis are swapped
+        exchange_matrix = np.array([[0, 1],
+                                    [1, 0]])
+
+        identity_matrix = np.eye(2)
+
+        match orientation:
+            case 0:  # no rotation
+                R = identity_matrix
+                t = np.zeros(2)
+            case 1:  # rotate 90 deg clockwise
+                R = np.array([[0, -1],
+                              [1, 0]])
+                
+                t = (-R + exchange_matrix) @ c
+
+            case 2:  # rotate 180 deg
+                R = np.array([[-1, 0],
+                              [0, -1]])
+                
+                t = (-R + identity_matrix) @ c
+
+            case 3:  # rotate 90 deg counter-clockwise
+                R = np.array([[0, 1],
+                              [-1, 0]])
+                
+                t = (-R + exchange_matrix) @ c
+
+            case _:
+                raise ValueError(f'Unexpected orientation int provided: {orientation}')
+
+
+        transform = np.array([[R[0, 0], R[0, 1], t[0]],
+                             [R[1, 0], R[1, 1], t[1]],
+                             [0, 0, 1]])
+
+        intrinsic_rotated = transform @ intrinsic_matrix
+        return intrinsic_rotated
+    """
+
 
     def _rotate_intrinsic(self, intrinsic: Tuple[float], orientation: int) -> np.ndarray:
         '''Based on original orientation, adjust intrinsics matrix for upright-oriented image'''
@@ -136,8 +196,8 @@ class DataLoader:
                                               [0, 0, 1]])
 
             case 3: # right -> apply 90 deg counter-clockwise rotation
-                intrinsic_rotated = np.array([[0, au, v0],
-                                              [-av, 0, w-u0],
+                intrinsic_rotated = np.array([[0, av, v0],
+                                              [-au, 0, w-u0],
                                               [0, 0, 1]])
             case _:
                 raise ValueError(f'Unexpected orientation int provided: {orientation}')

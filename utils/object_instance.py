@@ -108,10 +108,12 @@ class ObjectInstance():
         depth_values = self.depth[pix[1, :], pix[0, :]]
         # Calculate the 3D coordinates of the points
         mask_3d = depth_values * np.matmul(K_inv, pix)
+
         # Convert to homogeneous coordinates for transformation to world coords
         mask_3d = np.vstack([mask_3d, np.ones((1, mask_3d.shape[1]))])
         extrinsic_inv = inverseRigid(self.extrinsic)
-        mask_3d = extrinsic_inv @ mask_3d
+        # mask_3d = extrinsic_inv @ mask_3d
+        mask_3d = self.extrinsic @ mask_3d
         # Convert back to 3D
         mask_3d = mask_3d[:-1, :]
         return mask_3d
@@ -171,7 +173,8 @@ class ObjectInstance():
         fig.update_layout(title='3D Mask and Center Point',
                         scene=dict(xaxis_title='X Axis',
                                     yaxis_title='Y Axis',
-                                    zaxis_title='Z Axis'))
+                                    zaxis_title='Z Axis',
+                                    aspectmode='cube'))
 
         fig.show()
 

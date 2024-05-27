@@ -423,10 +423,14 @@ class DataParser:
         min_pose_timestamp = min(float(key) for key in poses_from_traj.keys()) 
         
         if float(desired_timestamp) < min_pose_timestamp:
-            return poses_from_traj[str(min_pose_timestamp)]
+            logging.warning(f'Desired timestamp before recorded poses, skipping frame.')
+            return None
+            # return poses_from_traj[str(min_pose_timestamp)]
         
         if float(desired_timestamp) > max_pose_timestamp:
-            return poses_from_traj[str(max_pose_timestamp)]
+            logging.warning(f'Desired timestamp after recorded poses, skipping frame.')
+            return None
+            # return poses_from_traj[str(max_pose_timestamp)]
 
         if desired_timestamp in poses_from_traj.keys():
             H = poses_from_traj[desired_timestamp]
