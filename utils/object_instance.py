@@ -6,41 +6,11 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 from pathlib import Path
 from letsdoit.utils.misc import inverseRigid
+from typing import List
 
-
-
-def initialize_object_instances(images, depths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations):
-    """
-    Initialize a list of ObjectInstance objects
-    """
-
-    object_instances = []
-    
-    for image, depth, bbox, mask, label, confidence, intrinsic, extrinsic, orientation in zip(images, 
-                                                                                                   depths,
-                                                                                                   bboxes, 
-                                                                                                   masks, 
-                                                                                                   labels, 
-                                                                                                   confidences, 
-                                                                                                   intrinsics, 
-                                                                                                   extrinsics, 
-                                                                                                   orientations):
-        
-        object_instances.append(ObjectInstance(image,
-                                               depth,
-                                               bbox,
-                                               mask,
-                                               label,
-                                               confidence,
-                                               intrinsic,
-                                               extrinsic,
-                                               orientation))
-
-    return object_instances
-        
 
 class ObjectInstance():
-    def __init__(self, image, depth, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation):
+    def __init__(self, image, image_name, depth, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation):
         self.bbox = bbox
         self.mask = mask
         self.label = label
@@ -52,6 +22,7 @@ class ObjectInstance():
         self.extrinsic = extrinsic
         self.depth = depth
         self.image = image
+        self.image_name = image_name
         self._center_2d = None
         self._center_3d = None
         self._mask_3d = None
@@ -136,45 +107,86 @@ class ObjectInstance():
         col = np.random.rand(3)
         ax.plot(self.center_2d[0], self.center_2d[1], 'o',  color=col, markersize=10)
     
-    def plot_3d(self):
-        fig = go.Figure()
+    def plot_3d(self, fig=None, subsample=True):
+        if fig is None:
+            fig = go.Figure()
 
         num_points = self.mask_3d.shape[1]
 
         # Subsample for viz, if too many points:
-        if num_points > 1e4:
+        if subsample:
             subsample_points = num_points // 100
             indices = np.linspace(0, self.mask_3d.shape[1] - 1, subsample_points, dtype=int)
             mask_3d = self.mask_3d[:, indices]
         else:
             mask_3d = self.mask_3d
-
-        mask_color = np.random.rand(3,)
+        mask_color = np.random.rand(3,) * 255
         fig.add_trace(go.Scatter3d(
             x=mask_3d[0, :],
             y=mask_3d[1, :],
             z=mask_3d[2, :],
             mode='markers',
-            marker=dict(size=2, color=mask_color, opacity=0.8),
-            name='Mask Points'
+            marker=dict(size=2, color=f'rgb({mask_color[0]}, {mask_color[1]}, {mask_color[2]})', opacity=0.8),
+            name=f'{self.image_name} | {self.label} ({self.confidence:.2f})'
         ))
 
-        center_3d = np.expand_dims(self.center_3d, -1)
-        center_color = np.random.rand(3,)
-        fig.add_trace(go.Scatter3d(
-            x=center_3d[0, :],
-            y=center_3d[1, :],
-            z=center_3d[2, :],
-            mode='markers',
-            marker=dict(size=5, color=center_color, opacity=1.0),
-            name='Mask Center'
-        ))
+        # center_3d = np.expand_dims(self.center_3d, -1)
+        # center_color = np.random.rand(3,)
+        # fig.add_trace(go.Scatter3d(
+        #     x=center_3d[0, :],
+        #     y=center_3d[1, :],
+        #     z=center_3d[2, :],
+        #     mode='markers',
+        #     marker=dict(size=5, color=center_color, opacity=1.0),
+        #     name='Mask Center'
+        # ))
 
-        fig.update_layout(title='3D Mask and Center Point',
+        fig.update_layout(title='3D Masks',
                         scene=dict(xaxis_title='X Axis',
                                     yaxis_title='Y Axis',
                                     zaxis_title='Z Axis',
-                                    aspectmode='cube'))
+                                    aspectmode='cube'),
+                        legend={
+                            'itemsizing': 'constant'
+                        })
 
-        fig.show()
+        if fig is None:
+            fig.show()
 
+def plot_instances_3d(instances: List[ObjectInstance], subsample=True):
+    fig = go.Figure()
+    for instance in instances:
+        instance.plot_3d(fig=fig, subsample=subsample)
+    fig.show()
+
+def initialize_object_instances(images, image_names, depths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations):
+    """
+    Initialize a list of ObjectInstance objects
+    """
+
+    object_instances = []
+    
+    for image, image_name, depth, bbox, mask, label, confidence, intrinsic, extrinsic, orientation in zip(images,
+                                                                                                   image_names,
+                                                                                                   depths,
+                                                                                                   bboxes, 
+                                                                                                   masks, 
+                                                                                                   labels, 
+                                                                                                   confidences, 
+                                                                                                   intrinsics, 
+                                                                                                   extrinsics, 
+                                                                                                   orientations):
+        
+        object_instances.append(ObjectInstance(image,
+                                               image_name,
+                                               depth,
+                                               bbox,
+                                               mask,
+                                               label,
+                                               confidence,
+                                               intrinsic,
+                                               extrinsic,
+                                               orientation))
+
+    return object_instances
+        

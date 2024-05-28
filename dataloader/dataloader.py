@@ -6,7 +6,7 @@ from typing import List, Dict, Tuple
 import numpy as np
 from tqdm import tqdm
 
-from dataloader.data_parser import DataParser, rotate_pose, decide_pose
+from dataloader.data_parser import DataParser, decide_pose, rotate_pose
 
 class DataLoader:
 
@@ -100,6 +100,7 @@ class DataLoader:
 
         frames = []
         orientations = []
+        frames_rotated = []
 
         description = f'Loading {format} frames from visit {visit_id} and video {video_id}'
         for i, (frame_path, pose) in tqdm(enumerate(zip(frame_paths, poses)), total=len(frame_paths), desc=description):
@@ -108,16 +109,11 @@ class DataLoader:
             else:
                 frame = self.parser.read_depth_frame(frame_path)
             orientation = decide_pose(pose)
-            frame = rotate_pose(frame, orientation)
             frames.append(frame)
-
-            # Rotate intrinsics, replace the old one
-            intrinsic = self._rotate_intrinsic(intrinsics[i], 0) #TODO: change back, now keep intrinsics as-is
-            intrinsics[i] = intrinsic
-
+            frames_rotated.append(rotate_pose(frame, orientation))
             orientations.append(orientation)
 
-        return frames, frame_paths, intrinsics, poses, orientations
+        return frames, frames_rotated, frame_paths, intrinsics, poses, orientations
 
 
     """
@@ -176,44 +172,44 @@ class DataLoader:
     """
 
 
-    def _rotate_intrinsic(self, intrinsic: Tuple[float], orientation: int) -> np.ndarray:
-        '''Based on original orientation, adjust intrinsics matrix for upright-oriented image'''
-        w, h, au, av, u0, v0 = intrinsic
-        match orientation:
-            case 0: # upright -> normal
-                intrinsic_rotated = np.array([[au, 0, u0],
-                                              [0, av, v0],
-                                              [0, 0, 1]])
+    # def _rotate_intrinsic(self, intrinsic: Tuple[float], orientation: int) -> np.ndarray:
+    #     '''Based on original orientation, adjust intrinsics matrix for upright-oriented image'''
+    #     w, h, au, av, u0, v0 = intrinsic
+    #     match orientation:
+    #         case 0: # upright -> normal
+    #             intrinsic_rotated = np.array([[au, 0, u0],
+    #                                           [0, av, v0],
+    #                                           [0, 0, 1]])
 
-            case 1: # left -> apply 90deg clockwise rotation
-                intrinsic_rotated = np.array([[0, -av, h-v0],
-                                              [au, 0, u0],
-                                              [0, 0, 1]])
+    #         case 1: # left -> apply 90deg clockwise rotation
+    #             intrinsic_rotated = np.array([[0, -av, h-v0],
+    #                                           [au, 0, u0],
+    #                                           [0, 0, 1]])
 
-            case 2: # upisde-down -> apply 180 deg rotation
-                intrinsic_rotated = np.array([[-au, 0, w-u0],
-                                              [0, -av, h-v0],
-                                              [0, 0, 1]])
+    #         case 2: # upisde-down -> apply 180 deg rotation
+    #             intrinsic_rotated = np.array([[-au, 0, w-u0],
+    #                                           [0, -av, h-v0],
+    #                                           [0, 0, 1]])
 
-            case 3: # right -> apply 90 deg counter-clockwise rotation
-                intrinsic_rotated = np.array([[0, av, v0],
-                                              [-au, 0, w-u0],
-                                              [0, 0, 1]])
-            case _:
-                raise ValueError(f'Unexpected orientation int provided: {orientation}')
+    #         case 3: # right -> apply 90 deg counter-clockwise rotation
+    #             intrinsic_rotated = np.array([[0, av, v0],
+    #                                           [-au, 0, w-u0],
+    #                                           [0, 0, 1]])
+    #         case _:
+    #             raise ValueError(f'Unexpected orientation int provided: {orientation}')
     
-        return intrinsic_rotated
+    #     return intrinsic_rotated
 
     def get_images(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
         """
         Return all the images for a given scene as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
         """
-        images, image_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='rgb', 
-                                                                                              asset_type=asset_type,
-                                                                                              sample_freq=sample_freq)
+        images, images_rotated, image_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='rgb', 
+                                                                                                asset_type=asset_type,
+                                                                                                sample_freq=sample_freq)
 
-        return images, image_paths, intrinsics, poses, orientations
+        return images, images_rotated, image_paths, intrinsics, poses, orientations
     
 
     def get_depths(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
@@ -221,11 +217,11 @@ class DataLoader:
         Return all the depths for a given scene as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
         """
-        depths, depth_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='depth', 
+        depths, depths_rotated, depth_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='depth', 
                                                                                               asset_type=asset_type,
                                                                                               sample_freq=sample_freq)
 
-        return depths, depth_paths, intrinsics, poses, orientations
+        return depths, depths_rotated, depth_paths, intrinsics, poses, orientations
 
 
     def get_instructions(self, instructions_path: str) -> Dict:

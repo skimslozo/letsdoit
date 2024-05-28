@@ -8,8 +8,7 @@ from transformers import CLIPProcessor, CLIPModel
 import torch
 from torch.nn import CosineSimilarity
 from tqdm import tqdm
-
-
+from letsdoit.dataloader.data_parser import rotate_image_batch
 
 class ClipRetriever:
     def __init__(self):

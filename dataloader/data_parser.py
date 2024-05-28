@@ -382,7 +382,7 @@ class DataParser:
             if not os.path.exists(intrinsic_fn):
                 raise ValueError(f"Intrinsics of frame_id {frame_id} do not exist")
 
-            intrinsics[frame_id] = st2_camera_intrinsics(intrinsic_fn)
+            intrinsics[frame_id] = st2_camera_intrinsics(intrinsic_fn, format='matrix')
 
         return frame_ids, frame_paths, intrinsics
     

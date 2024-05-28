@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from tqdm import tqdm
@@ -227,3 +227,45 @@ class MasksFinder:
             self._show_box(box.numpy(), plt.gca(), label)
 
         plt.axis('off')
+
+
+def unrotate_masks(masks: List[np.ndarray], orientations: List[int]) -> List[np.ndarray]:
+    masks_unrotated = []
+    for mask, orientation in zip(masks, orientations):
+        match orientation:
+            case 0: # original is upright
+                k = 0
+                axes = (0, 1)
+            case 1: # original is left -> CCW 90deg to unrotate
+                k = 1
+                axes = (0, 1)
+            case 2: # original is upside-down -> 180deg rotation
+                k = 2
+                axes = (0, 1)
+            case 3: # original is right -> CW 90deg to unrotate
+                k = 1
+                axes = (1, 0)
+        mask_unrot = np.rot90(mask, k=k, axes=axes)
+        masks_unrotated.append(mask_unrot)
+    return masks_unrotated
+
+def unrotate_bboxes(bboxes: List[np.ndarray], img_dims: List[Tuple[float]], orientations: List[int]):
+    bboxes_unrotated = []
+    for bbox, img_shape, orientation in zip(bboxes, img_dims, orientations):
+        u1, v1, u2, v2 = bbox
+        height, width = img_shape
+        match orientation:
+            case 0: # original is upright
+                new_u1, new_v1 = u1, v1
+                new_u2, new_v2 = u2, v2
+            case 1: # original is left -> CCW 90deg to unrotate
+                new_u1, new_v1 = v1, width - u1
+                new_u2, new_v2 = v2, width - u2
+            case 2: # original is upside-down -> 180deg rotation
+                new_u1, new_v1 = width - u1, height - v1
+                new_u2, new_v2 = width - u2, height - v2
+            case 3: # original is right -> CW 90deg to unrotate
+                new_u1, new_v1 = height - v1, u1
+                new_u2, new_v2 = height - v2, u2
+        bboxes_unrotated.append(np.array([new_u1, new_v1, new_u2, new_v2]))
+    return bboxes_unrotated
