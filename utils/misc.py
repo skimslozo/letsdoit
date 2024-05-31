@@ -47,3 +47,8 @@ def inverseRigid(H):
 
 def select_ids(array, ids):
     return [array[idx] for idx in ids]
+
+
+def sample_points(points, n=1000):
+    # points have shape (3, n_points)
+    return points[:, np.random.randint(0, points.shape[1], size=n)] 

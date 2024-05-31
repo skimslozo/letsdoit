@@ -1,4 +1,3 @@
-
 import os
 from typing import List
 
@@ -8,7 +7,7 @@ from transformers import CLIPProcessor, CLIPModel
 import torch
 from torch.nn import CosineSimilarity
 from tqdm import tqdm
-from letsdoit.dataloader.data_parser import rotate_image_batch
+
 
 class ClipRetriever:
     def __init__(self):
@@ -56,13 +55,12 @@ class ClipRetriever:
         else:
             # output topk indices of images that have a similarity score of at most max_similarity_thresh with each others
             for idx1 in best_indices_all:
-                if len(best_indices_all) == topk:
+                if len(best_indices_selected) == topk:
                     break
                 max_similarity = 0
                 if len(best_indices_selected) > 0:
                     similarities = cos(self.image_features[[idx1]], self.image_features[best_indices_selected])
                     max_similarity = similarities.max()
-                    print(max_similarity)
                         
                 if max_similarity < max_similarity_thresh:
                     best_indices_selected.append(idx1)

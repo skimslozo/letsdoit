@@ -7,16 +7,19 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from letsdoit.utils.misc import inverseRigid
 from typing import List
+from transformers import CLIPProcessor, CLIPModel
+
 
 
 class ObjectInstance():
-    def __init__(self, image, image_name, depth, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation):
+    def __init__(self, image, image_name, depth, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation, image_features):
         self.bbox = bbox
         self.mask = mask
         self.label = label
         self.confidence = confidence
         self.id = str(uuid.uuid4())
         self.orientation = orientation
+        self.image_features = image_features
 
         self.intrinsic = intrinsic
         self.extrinsic = extrinsic
@@ -46,6 +49,7 @@ class ObjectInstance():
         if self._center_3d is None:
             self._center_3d = np.mean(self.mask_3d, axis=1)
         return self._center_3d
+
     
     def _get_mask_center(self):
         # Calculate moments of the binary image
@@ -107,7 +111,7 @@ class ObjectInstance():
         col = np.random.rand(3)
         ax.plot(self.center_2d[0], self.center_2d[1], 'o',  color=col, markersize=10)
     
-    def plot_3d(self, fig=None, subsample=True):
+    def plot_3d(self, fig=None, subsample=True, show=True):
         if fig is None:
             fig = go.Figure()
 
@@ -150,32 +154,33 @@ class ObjectInstance():
                             'itemsizing': 'constant'
                         })
 
-        if fig is None:
+        if show:
             fig.show()
 
 def plot_instances_3d(instances: List[ObjectInstance], subsample=True):
     fig = go.Figure()
     for instance in instances:
-        instance.plot_3d(fig=fig, subsample=subsample)
+        instance.plot_3d(fig=fig, subsample=subsample, show=False)
     fig.show()
 
-def initialize_object_instances(images, image_names, depths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations):
+def initialize_object_instances(images, image_names, depths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations, image_features):
     """
     Initialize a list of ObjectInstance objects
     """
 
     object_instances = []
     
-    for image, image_name, depth, bbox, mask, label, confidence, intrinsic, extrinsic, orientation in zip(images,
-                                                                                                   image_names,
-                                                                                                   depths,
-                                                                                                   bboxes, 
-                                                                                                   masks, 
-                                                                                                   labels, 
-                                                                                                   confidences, 
-                                                                                                   intrinsics, 
-                                                                                                   extrinsics, 
-                                                                                                   orientations):
+    for image, image_name, depth, bbox, mask, label, confidence, intrinsic, extrinsic, orientation, image_feature in zip(images,
+                                                                                                                         image_names,
+                                                                                                                         depths,
+                                                                                                                         bboxes, 
+                                                                                                                         masks, 
+                                                                                                                         labels, 
+                                                                                                                         confidences, 
+                                                                                                                         intrinsics, 
+                                                                                                                         extrinsics, 
+                                                                                                                         orientations,
+                                                                                                                         image_features):
         
         object_instances.append(ObjectInstance(image,
                                                image_name,
@@ -186,7 +191,22 @@ def initialize_object_instances(images, image_names, depths, bboxes, masks, labe
                                                confidence,
                                                intrinsic,
                                                extrinsic,
-                                               orientation))
+                                               orientation,
+                                               image_feature))
 
     return object_instances
-        
+
+
+def generate_masks_features(clip_processor, clip_model, images, bboxes, masks):
+    # generate image features for every bbox from the masked image
+    images_cropped = []
+
+    for image, bbox, mask in zip(images, bboxes, masks):
+        x1, y1, x2, y2 = [int(x) for x in bbox]
+        masked_img = image * np.expand_dims(mask, -1)
+        images_cropped.append(masked_img[y1:y2, x1:x2])
+
+    clip_input = clip_processor(images=images_cropped, return_tensors="pt")
+    image_features = clip_model.get_image_features(**clip_input)
+
+    return image_features

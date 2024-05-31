@@ -158,6 +158,7 @@ class MasksFinder:
         _ = model.eval()
         return model
 
+
     def _get_grounding_output(self, model, image, caption, box_threshold, text_threshold, device=torch.device("cpu")):
         caption = caption.lower().strip() + "." if not caption.endswith(".") else caption
         model = model.to(device)
@@ -180,6 +181,7 @@ class MasksFinder:
             pred_phrases.append(pred_phrase)
             confidence.append(logit.max().item())
         return boxes_filt, pred_phrases, confidence
+
 
     def _find_geometric_center(self, mask):
         """
@@ -206,7 +208,6 @@ class MasksFinder:
         x0, y0, w, h = box[0], box[1], box[2] - box[0], box[3] - box[1]
         ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))
         ax.text(x0, y0, label)
-
 
 
     def show_prediction(self, objects_masks: dict):
