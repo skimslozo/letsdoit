@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 import scipy
 from torch.nn import CosineSimilarity
+from tqdm import tqdm
 
 from utils.object_instance import ObjectInstance
 from utils.object_3d import Object3D
@@ -11,7 +12,8 @@ from utils.misc import sample_points
 
 class MasksMerger:
 
-    def __init__(self, dist_thresh=0.1, geo_similarity_thresh=0.8, n_points=1000):
+    def __init__(self, dist_thresh=0.1, geo_similarity_thresh=0.7, feat_similarity_thresh=0.7,
+                 n_points=1000):
         """
         Parameters
         ----------
@@ -23,6 +25,7 @@ class MasksMerger:
 
         self.dist_thresh = dist_thresh
         self.geo_similarity_thresh = geo_similarity_thresh
+        self.feat_similarity_thresh = feat_similarity_thresh
         self.n_points = n_points
         
     
@@ -33,7 +36,7 @@ class MasksMerger:
 
         objects_3d = []
 
-        for object_instance in object_instances:
+        for object_instance in tqdm(object_instances, desc='Matching the object instances'):
 
             if len(objects_3d) == 0:
                 objects_3d.append(Object3D(object_instance))
@@ -91,6 +94,10 @@ class MasksMerger:
         object_3d_features = object_3d.image_features
         object_instance_features = object_instance.image_features
         feat_similarity = self.feature_similarity(object_3d_features, object_instance_features)
+
+        if feat_similarity < self.feat_similarity_thresh:
+            return 0
+
         return feat_similarity    
     
     

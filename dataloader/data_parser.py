@@ -296,7 +296,8 @@ class DataParser:
         Returns:
             (open3d.geometry.PointCloud): A point cloud object containing the high-resolution 3D reconstruction data.
         """
-        highres_recon_path = os.path.join(self.data_root_path, visit_id, video_id, f"{video_id}_highres_recon.ply")
+        #highres_recon_path = os.path.join(self.data_root_path, visit_id, video_id, f"{video_id}_highres_recon.ply")
+        highres_recon_path = os.path.join(self.data_root_path, visit_id, video_id, f"{video_id}.ply")
         
         pcd = o3d.io.read_point_cloud(highres_recon_path) 
 

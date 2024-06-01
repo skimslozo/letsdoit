@@ -3,6 +3,7 @@ from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.graph_objects as go
+from sklearn.cluster import DBSCAN
 
 from utils.object_instance import ObjectInstance
 from utils.misc import sample_points
@@ -16,7 +17,9 @@ class Object3D:
 
         self.max_points = max_points
 
-        self.points = sample_points(object_instance.mask_3d, n=self.max_points)
+        points = sample_points(object_instance.mask_3d, n=self.max_points)
+        self.points = self.denoise_points(points)
+
         self.image_features = object_instance.image_features
         self.object_instances = [object_instance]
         self.label = object_instance.label
@@ -24,7 +27,8 @@ class Object3D:
     def add_object_instance(self, object_instance: ObjectInstance):
         points = np.hstack([self.points, object_instance.mask_3d])
 
-        self.points = sample_points(points, n=self.max_points)
+        points = sample_points(points, n=self.max_points)
+        self.points = self.denoise_points(points)
 
         n_objs = len(self.object_instances)
         # take the average of the previous image_features with the one coming from the new object_instance
@@ -69,6 +73,17 @@ class Object3D:
         
         if show:
             fig.show()
+
+
+    def denoise_points(self, points, eps=1, min_samples=100):
+        # apply DBSCAN clustering to remove outliers from the point cloud
+        dbscan = DBSCAN(eps=eps, min_samples=min_samples)
+        labels = dbscan.fit_predict(points.T)
+
+        # remove all the outliers (label==-1 for outliers)
+        ids_denoised = np.where(labels == 0)[0]
+        return points[:,ids_denoised]
+
 
 
 def plot_objects_3d(objects_3d: List[Object3D], subsample=False):

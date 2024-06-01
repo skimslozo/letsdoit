@@ -23,10 +23,12 @@ class SpatialPrimitivePair:
                 primitive: SpatialPrimitive, 
                 T_world_to_viewpoint: np.ndarray = np.eye(4), 
                 norm_factor: float = 1,
+                reference_2: SpatialPrimitive = None, # Only used if SpatialPrimitive is "between"
                 ):
         
         self.target = target
         self.reference = reference
+        self.reference_2 = reference_2
         self.primitive = primitive
         self.T_world_to_viewpoint = T_world_to_viewpoint
         self.norm_factor = norm_factor
@@ -35,54 +37,85 @@ class SpatialPrimitivePair:
     def _to_viewpoint(self, x):
         return self.T_world_to_viewpoint @ x
 
-    def get_score(self):
+    def get_score(self) -> int | float:
         res = None
         match self.primitive:
             case SpatialPrimitive.ABOVE:
-                pass
+                res = self.evaluate_above()
             case SpatialPrimitive.BELOW:
-                pass
+                res = self.evaluate_below()
             case SpatialPrimitive.FRONT:
-                pass
+                res = self.evaluate_front()
             case SpatialPrimitive.BEHIND:
-                pass
+                res = self.evaluate_behind()
             case SpatialPrimitive.RIGHT:
-                pass
+                res = self.evaluate_right()
             case SpatialPrimitive.LEFT:
-                pass
+                res = self.evaluate_left()
             case SpatialPrimitive.CONTAINS:
-                pass
+                res = self.evaluate_contains()
             case SpatialPrimitive.NEXT_TO:
                 res = self.evaluate_next_to()
             case SpatialPrimitive.BETWEEN:
-                pass
+                res = self.evaluate_between()
             case _:
                 raise ValueError('Invalid spatial primitive provided')
         return res
 
-    def evaluate_above(self):
-        # Target z above reference
-        dist = int(self.target.center_3d[2] > self.reference.center_3d[2])
-        return dist
+    def evaluate_above(self) -> int:
+        # Target z above reference (higher than reference)
+        z_dist = int(self.target.center_3d[2] > self.reference.center_3d[2])
+        return z_dist
     
-    def evaluate_below(self):
-        # Target z below reference
-        dist = int(self.target.center_3d[2] < self.reference.center_3d[2])
-        return dist
+    def evaluate_below(self) -> int:
+        # Target z below reference (lower than reference)
+        z_dist = int(self.target.center_3d[2] < self.reference.center_3d[2])
+        return z_dist
 
-    def evaluate_front(self):
-        # Heuristic: the closer the target is to the reference, the more "in front" it is -> the less negative, the higher the score
-        y_dist = self.target.center_3d[1] - self.reference.center_3d[1]
-        return y_dist / self.norm_factor
+    def evaluate_front(self) -> int:
+        # Target y smaller than reference y (closer than reference)
+        y_dist = int(self.target.center_3d[1] < self.reference.center_3d[1])
+        return y_dist
 
-    def evaluate_back(self):
-        return -self.evaluate_front()
-    
-    def evaluate_right(self):
-        # Assume now x-axis will match to general "right" in all cases, TODO: check if reasonable.
-        return 
+    def evaluate_behind(self) -> int:
+        # Target y larger than reference y (further than reference)
+        y_dist = int(self.target.center_3d[1] > self.reference.center_3d[1])
+        return y_dist
 
-    def evaluate_next_to(self):
+    def evaluate_right(self) -> int:
+        # Target x larger than reference x
+        x_dist = int(self.target.center_3d[0] > self.reference.center_3d[0])
+        return x_dist
+
+    def evaluate_left(self) -> int:
+        # Target x smaller than reference x
+        x_dist = int(self.target.center_3d[0] < self.reference.center_3d[0])
+        return x_dist
+
+    def evaluate_contains(self, eps: float=0.01, thershold=0.95) -> int:
+        # epsilon - error on bounding box dimensions
+        max_points = np.max(self.reference.mask_3d, axis=1).reshape(-1, 1) + eps
+        min_points = np.min(self.reference.mask_3d, axis=1).reshape(-1, 1) - eps
+        # Criterion from contains: at least 95% of points of target is within refernece 3d bbox
+        larger = np.all(self.target.mask_3d > min_points, axis=0)
+        smaller = np.all(self.target.mask_3d < max_points, axis=0)
+        points_inside = larger*smaller
+        contains = int((np.sum(points_inside) / len(points_inside)) > thershold)
+        return contains
+
+    def evaluate_between(self, eps: float=0.1, thershold=0.7) -> int:
+        # In between: the same as contains, but expand min_points and max_points with points from both references and a different epsilon and threshold
+        ref_points = np.hstack([self.reference.mask_3d, self.reference_2.mask_3d])
+        max_points = np.max(ref_points, axis=1).reshape(-1, 1) + eps
+        min_points = np.min(ref_points, axis=1).reshape(-1, 1) - eps
+        # Criterion from contains: at least 95% of points of target is within refernece 3d bbox
+        larger = np.all(self.target.mask_3d > min_points, axis=0)
+        smaller = np.all(self.target.mask_3d < max_points, axis=0)
+        points_inside = larger*smaller
+        contains = int((np.sum(points_inside) / len(points_inside)) > thershold)
+        return contains
+
+    def evaluate_next_to(self) -> float:
         dist = np.linalg.norm(self.target.center_3d - self.reference.center_3d)
         return dist / self.norm_factor
 
