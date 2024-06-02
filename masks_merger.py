@@ -1,6 +1,7 @@
 from typing import List
 
 import numpy as np
+import open3d
 import scipy
 from torch.nn import CosineSimilarity
 from tqdm import tqdm
@@ -29,9 +30,10 @@ class MasksMerger:
         self.n_points = n_points
         
     
-    def __call__(self, object_instances: List[ObjectInstance]) -> List[Object3D]:
+    def __call__(self, object_instances: List[ObjectInstance], pcd: open3d.cuda.pybind.geometry.PointCloud) -> List[Object3D]:
         """
         Given a list of ObjectInstance, match them and return a list of Object3D.
+        pcd is a point cloud
         """
 
         objects_3d = []
@@ -39,7 +41,7 @@ class MasksMerger:
         for object_instance in tqdm(object_instances, desc='Matching the object instances'):
 
             if len(objects_3d) == 0:
-                objects_3d.append(Object3D(object_instance))
+                objects_3d.append(Object3D(object_instance, pcd))
 
             else:
                 # we need to assign the object_instance to a object_3d
@@ -47,7 +49,7 @@ class MasksMerger:
 
                 if idx == -1:
                     # no object_3d has been found as a match
-                    objects_3d.append(Object3D(object_instance))
+                    objects_3d.append(Object3D(object_instance, pcd))
 
                 else:
                     # the match has been found, we integrate the object_instance in the object_3d

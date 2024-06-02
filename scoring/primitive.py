@@ -1,8 +1,13 @@
 import numpy as np
 from enum import Enum
+from typing import Dict, List, Tuple
 
-from letsdoit.utils.object_instance import ObjectInstance
+from letsdoit.utils.object_instance import ObjectInstance, plot_instances_3d
 
+class ObjectType(Enum):
+    TARGET=0
+    REFERENCE=1
+    REFERENCE_2=2
 
 class SpatialPrimitive(Enum):
     ABOVE = 1
@@ -33,11 +38,32 @@ class SpatialPrimitivePair:
         self.T_world_to_viewpoint = T_world_to_viewpoint
         self.norm_factor = norm_factor
         assert ((T_world_to_viewpoint.shape[0] == 4) and (T_world_to_viewpoint.shape[1] == 4) and (len(T_world_to_viewpoint.shape) == 2))
+        self.score = self.get_total_score()
+
+    @classmethod
+    def from_list(cls, objects: List[Tuple[ObjectType, ObjectInstance]], prim: Dict) -> 'SpatialPrimitivePair':
+        t, r, r2 = None, None, None
+        prim = get_primitive(prim['primitive'])
+        for otype, oinstance in objects:
+            if otype == ObjectType.TARGET:
+                t = oinstance
+            elif otype == ObjectType.REFERENCE:
+                r = oinstance
+            elif otype == ObjectType.REFERENCE_2:
+                r2 = oinstance
+        return cls(target=t, reference=r, primitive=prim, reference_2=r2)
 
     def _to_viewpoint(self, x):
         return self.T_world_to_viewpoint @ x
 
-    def get_score(self) -> int | float:
+    def get_total_score(self):
+        if self.primitive == SpatialPrimitive.BETWEEN:
+            out = self.target.confidence * self.reference.confidence * self.get_spatial_score() * self.reference_2.confidence
+        else:
+            out = self.target.confidence * self.reference.confidence * self.get_spatial_score()
+        return out
+    
+    def get_spatial_score(self) -> int | float:
         res = None
         match self.primitive:
             case SpatialPrimitive.ABOVE:
@@ -118,6 +144,50 @@ class SpatialPrimitivePair:
     def _evaluate_next_to(self) -> float:
         dist = np.linalg.norm(self.target.center_3d - self.reference.center_3d)
         return dist / self.norm_factor
+    
+    def plot_3d(self):
+        t = ObjectInstance(image=self.target.image,
+                           image_name=self.target.image_name,
+                           depth=self.target.depth,
+                           bbox=self.target.bbox,
+                           mask=self.target.mask,
+                           label=f'TARGET | {self.target.label}',
+                           intrinsic=self.target.intrinsic,
+                           extrinsic=self.target.extrinsic,
+                           confidence=self.target.confidence,
+                           image_features=self.target.image_features,
+                           orientation=self.target.orientation,
+        )
+
+        r = ObjectInstance(image=self.reference.image,
+                    image_name=self.reference.image_name,
+                    depth=self.reference.depth,
+                    bbox=self.reference.bbox,
+                    mask=self.reference.mask,
+                    label=f'REFERENCE | {self.reference.label}',
+                    intrinsic=self.reference.intrinsic,
+                    extrinsic=self.reference.extrinsic,
+                    confidence=self.reference.confidence,
+                    image_features=self.reference.image_features,
+                    orientation=self.reference.orientation,
+        )
+        
+        objs = [t, r]
+        if self.reference_2 is not None:
+            r2 = ObjectInstance(image=self.reference_2.image,
+                    image_name=self.reference_2.image_name,
+                    depth=self.reference_2.depth,
+                    bbox=self.reference_2.bbox,
+                    mask=self.reference_2.mask,
+                    label=f'REFERENCE 2 | {self.reference.label}',
+                    intrinsic=self.reference_2.intrinsic,
+                    extrinsic=self.reference_2.extrinsic,
+                    confidence=self.reference_2.confidence,
+                    image_features=self.reference_2.image_features,
+                    orientation=self.reference_2.orientation,
+            )
+            objs.append(r2)
+        plot_instances_3d(objs)
 
 def get_primitive(primitive_str: str) -> SpatialPrimitive:
     out = None
@@ -141,3 +211,34 @@ def get_primitive(primitive_str: str) -> SpatialPrimitive:
         case 'between':
             out = SpatialPrimitive.BETWEEN
     return out
+
+def get_remaining_labels(known: ObjectType, p: Dict):
+    '''Given known type, output the labels and ObjectTypes of the remaining objects in primitive'''
+    ptype = get_primitive(p['primitive'])
+    if ptype == SpatialPrimitive.BETWEEN:
+        if known == ObjectType.TARGET:
+            return [(ObjectType.REFERENCE, p['reference_object']), (ObjectType.REFERENCE_2, p['reference_object_2'])]
+
+        elif known == ObjectType.REFERENCE:
+            return [(ObjectType.TARGET, p['target_object']), (ObjectType.REFERENCE_2, p['reference_object_2'])]
+
+        elif known == ObjectType.REFERENCE_2:
+            return [(ObjectType.TARGET, ['target_object']), (ObjectType.REFERENCE, p['reference_object'])]
+
+    else:
+        if known == ObjectType.TARGET:
+            return (ObjectType.REFERENCE, p['reference_object'])
+
+        elif known == ObjectType.REFERENCE:
+            return (ObjectType.TARGET, p['target_object'])
+
+    
+def check_object_type(label: str, primitive: Dict):
+    type = None
+    if label in primitive['target_object']:
+        type = ObjectType.TARGET
+    elif label in primitive['reference_object']:
+        type = ObjectType.REFERENCE
+    elif (get_primitive(primitive['primitive']) == SpatialPrimitive.BETWEEN) and (label in primitive['reference_object_2']):
+        type = ObjectType.REFERENCE_2
+    return type

@@ -1,6 +1,6 @@
 import cv2
 import uuid
-import imageio
+import copy
 import numpy as np
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
@@ -8,7 +8,6 @@ from pathlib import Path
 from letsdoit.utils.misc import inverseRigid
 from typing import List
 from transformers import CLIPProcessor, CLIPModel
-
 
 
 class ObjectInstance():
@@ -19,7 +18,7 @@ class ObjectInstance():
         self.confidence = confidence
         self.id = str(uuid.uuid4())
         self.orientation = orientation
-        self.image_features = image_features
+        self.image_features = image_features.clone()
 
         self.intrinsic = intrinsic
         self.extrinsic = extrinsic
@@ -93,23 +92,51 @@ class ObjectInstance():
         mask_3d = mask_3d[:-1, :]
         return mask_3d
 
-    def plot_2d(self):
-        plt.figure(figsize=(10, 10))
-        plt.axis('off')
-        ax = plt.gca()
-        # Image
-        ax.imshow(self.image)
-        #Mask
+
+    def plot_2d(self, ax=None, scale_factor=0.3):
+        if ax is None:
+            plt.figure(figsize=(int(10*scale_factor), int(10*scale_factor)))
+            plt.axis('off')
+            ax = plt.gca()
+        else:
+            ax.axis('off')
+
+        # compute Mask
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
         h, w = self.mask.shape[-2:]
         mask_img = self.mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
+
+        # rotate the image and the mask in according with the orientation
+        match self.orientation:
+            case 0:  # no rotation
+                image = self.image
+            case 1:  # rotate 90 deg clockwise
+                image = cv2.rotate(self.image, cv2.ROTATE_90_CLOCKWISE)
+                mask_img = cv2.rotate(mask_img, cv2.ROTATE_90_CLOCKWISE)
+            case 2:  # rotate 180 deg
+                image = cv2.rotate(self.image, cv2.ROTATE_180)
+                mask_img = cv2.rotate(mask_img, cv2.ROTATE_180)
+            case 3:  # rotate 90 deg counter-clockwise
+                image = cv2.rotate(self.image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                mask_img = cv2.rotate(mask_img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            case _:
+                raise ValueError(f'Unexpected orientation int provided: {orientation}')
+
+        # resize mask and image
+        image = cv2.resize(image, (0, 0), fx = scale_factor, fy = scale_factor)
+        mask_img = cv2.resize(mask_img, (0, 0), fx = scale_factor, fy = scale_factor)
+
+        # Show mask and image
+        ax.imshow(image)
         ax.imshow(mask_img)
+
         #bbox
         x0, y0, w, h = self.bbox[0], self.bbox[1], self.bbox[2] - self.bbox[0], self.bbox[3] - self.bbox[1]
+        x0, y0, w, h = [int(elem*scale_factor) for elem in [x0, y0, w, h]]  # scale them
         ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))
         txt = ax.text(x0, y0, self.label+f' ({self.confidence:.2f})')
         col = np.random.rand(3)
-        ax.plot(self.center_2d[0], self.center_2d[1], 'o',  color=col, markersize=10)
+        #ax.plot(self.center_2d[0], self.center_2d[1], 'o',  color=col, markersize=10)
     
     def plot_3d(self, fig=None, subsample=True, show=True):
         if fig is None:
@@ -156,6 +183,27 @@ class ObjectInstance():
 
         if show:
             fig.show()
+
+    def __deepcopy__(self, memo):
+        if id(self) in memo:
+            return memo[id(self)]
+        new_obj = type(self)(
+            copy.deepcopy(self.image, memo),
+            copy.deepcopy(self.image_name, memo),
+            copy.deepcopy(self.depth, memo),
+            copy.deepcopy(self.bbox, memo),
+            copy.deepcopy(self.mask, memo),
+            copy.deepcopy(self.label, memo),
+            copy.deepcopy(self.confidence, memo),
+            copy.deepcopy(self.intrinsic, memo),
+            copy.deepcopy(self.extrinsic, memo),
+            copy.deepcopy(self.orientation, memo),
+            self.image_features.clone()
+        )
+
+        memo[id(self)] = new_obj
+        return new_obj
+        
 
 def plot_instances_3d(instances: List[ObjectInstance], subsample=True):
     fig = go.Figure()
