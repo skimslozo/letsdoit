@@ -7,10 +7,14 @@ from human_id import generate_id
 from typing import List, Dict, Tuple, Optional
 from letsdoit.scoring.primitive import SpatialPrimitivePair, SpatialPrimitive, ObjectType, get_primitive, get_remaining_labels, check_object_type
 from letsdoit.utils.object_instance import ObjectInstance
+from letsdoit.utils.object_3d import Object3D
 from letsdoit.utils.misc import get_instances
 
 class GraphNode:
-    def __init__(self, primitives: List[Dict], all_objects: List[ObjectInstance], root: bool = False, object: ObjectInstance = None, parent: Optional['GraphNode'] = None, child_num: int = None, used_indices: Optional[set] = None):
+    def __init__(self, primitives: List[Dict], all_objects: List[Object3D], 
+                 root: bool = False, object: Object3D = None, 
+                 parent: Optional['GraphNode'] = None, 
+                 child_num: int = None, used_indices: Optional[set] = None):
         self.parent = parent
         self.object = object
         self.primitives = primitives
@@ -45,7 +49,7 @@ class GraphNode:
             if self.parent:
                 self.parent.best_score = value  # Propagate the update to the parent
 
-    def expand(self, children: List[ObjectInstance] = None):
+    def expand(self, children: List[Object3D] = None):
         if self.parent:
             parent_label = self.parent.label
         else:
@@ -57,7 +61,7 @@ class GraphNode:
                 child_index = self.all_objs.index(child)
                 if child_index in self.used_indices:
                     continue  # Skip already used objects
-                print(f'Expanding root child {i}/{len(children)}')
+                # print(f'Expanding root child {i}/{len(children)}')
                 self.edges.append('starting_edge')
                 cn = GraphNode(primitives=deepcopy(self.primitives),
                                all_objects=self.all_objs,
@@ -76,7 +80,7 @@ class GraphNode:
                 otype = check_object_type(self.object.label, prim)
 
                 if get_primitive(prim['primitive']) == SpatialPrimitive.BETWEEN:
-                    print('Handling BETWEEN primitive')
+                    # print('Handling BETWEEN primitive')
                     c1_instances, c1_otype, c2_instances, c2_otype = self._create_children_instances(otype, prim)
                     child_combs = itertools.product(c1_instances, c2_instances)
                     for i, (c1, c2) in enumerate(child_combs):
@@ -164,3 +168,29 @@ class GraphNode:
         if self.score > self.parent.best_score:
             self.parent.best_score = self.score  # Use the setter to update best_score
             self.parent.best_child_index = self.child_num  # Update the best child index
+
+
+def retrieve_best_action_object(instruction: dict, objects: List[Object3D]) -> Object3D:
+    """
+    Attributes:
+        instruction (dict): dict extracted from the json with the instructions from GPT4
+        objects (List[Object3D]): list of object_3d
+
+    Return:
+        best_action_object (Object3D): best action object
+    """
+
+
+    root = GraphNode(primitives=instruction['spatial_primitives'],
+                    all_objects=objects,
+                    root=True)
+    action_instances = get_instances(instruction['action_object'], objects)
+    root.expand(action_instances)
+
+    node = root
+    if len(node.children) == 0:
+        return None
+    best_action_object_idx = np.argmax([child.best_score for child in node.children])
+    best_action_object = node.children[best_child].object
+    return best_action_object
+    

@@ -1,8 +1,11 @@
+import copy
+
 import numpy as np
 from enum import Enum
 from typing import Dict, List, Tuple
 
 from letsdoit.utils.object_instance import ObjectInstance, plot_instances_3d
+from letsdoit.utils.object_3d import Object3D, plot_objects_3d
 
 class ObjectType(Enum):
     TARGET=0
@@ -23,8 +26,8 @@ class SpatialPrimitive(Enum):
 class SpatialPrimitivePair:
 
     def __init__(self, 
-                target: ObjectInstance, 
-                reference: ObjectInstance, 
+                target: Object3D, 
+                reference: Object3D, 
                 primitive: SpatialPrimitive, 
                 T_world_to_viewpoint: np.ndarray = np.eye(4), 
                 norm_factor: float = 1,
@@ -41,16 +44,16 @@ class SpatialPrimitivePair:
         self.score = self.get_total_score()
 
     @classmethod
-    def from_list(cls, objects: List[Tuple[ObjectType, ObjectInstance]], prim: Dict) -> 'SpatialPrimitivePair':
+    def from_list(cls, objects: List[Tuple[ObjectType, Object3D]], prim: Dict) -> 'SpatialPrimitivePair':
         t, r, r2 = None, None, None
         prim = get_primitive(prim['primitive'])
-        for otype, oinstance in objects:
+        for otype, ob3d in objects:
             if otype == ObjectType.TARGET:
-                t = oinstance
+                t = ob3d
             elif otype == ObjectType.REFERENCE:
-                r = oinstance
+                r = ob3d
             elif otype == ObjectType.REFERENCE_2:
-                r2 = oinstance
+                r2 = ob3d
         return cls(target=t, reference=r, primitive=prim, reference_2=r2)
 
     def _to_viewpoint(self, x):
@@ -120,23 +123,23 @@ class SpatialPrimitivePair:
 
     def _evaluate_contains(self, eps: float=0.01, thershold=0.95) -> int:
         # epsilon - error on bounding box dimensions
-        max_points = np.max(self.reference.mask_3d, axis=1).reshape(-1, 1) + eps
-        min_points = np.min(self.reference.mask_3d, axis=1).reshape(-1, 1) - eps
+        max_points = np.max(self.reference.points, axis=1).reshape(-1, 1) + eps
+        min_points = np.min(self.reference.points, axis=1).reshape(-1, 1) - eps
         # Criterion from contains: at least 95% of points of target is within refernece 3d bbox
-        larger = np.all(self.target.mask_3d > min_points, axis=0)
-        smaller = np.all(self.target.mask_3d < max_points, axis=0)
+        larger = np.all(self.target.points > min_points, axis=0)
+        smaller = np.all(self.target.points < max_points, axis=0)
         points_inside = larger*smaller
         contains = int((np.sum(points_inside) / len(points_inside)) > thershold)
         return contains
 
     def _evaluate_between(self, eps: float=0.1, thershold=0.7) -> int:
         # In between: the same as contains, but expand min_points and max_points with points from both references and a different epsilon and threshold
-        ref_points = np.hstack([self.reference.mask_3d, self.reference_2.mask_3d])
+        ref_points = np.hstack([self.reference.points, self.reference_2.points])
         max_points = np.max(ref_points, axis=1).reshape(-1, 1) + eps
         min_points = np.min(ref_points, axis=1).reshape(-1, 1) - eps
         # Criterion from contains: at least 70% of points of target is within refernece 3d bbox
-        larger = np.all(self.target.mask_3d > min_points, axis=0)
-        smaller = np.all(self.target.mask_3d < max_points, axis=0)
+        larger = np.all(self.target.points > min_points, axis=0)
+        smaller = np.all(self.target.points < max_points, axis=0)
         points_inside = larger*smaller
         contains = int((np.sum(points_inside) / len(points_inside)) > thershold)
         return contains
@@ -146,48 +149,19 @@ class SpatialPrimitivePair:
         return dist / self.norm_factor
     
     def plot_3d(self):
-        t = ObjectInstance(image=self.target.image,
-                           image_name=self.target.image_name,
-                           depth=self.target.depth,
-                           bbox=self.target.bbox,
-                           mask=self.target.mask,
-                           label=f'TARGET | {self.target.label}',
-                           intrinsic=self.target.intrinsic,
-                           extrinsic=self.target.extrinsic,
-                           confidence=self.target.confidence,
-                           image_features=self.target.image_features,
-                           orientation=self.target.orientation,
-        )
+        t = copy.copy(t)
+        t.label = f'TARGET | {t.label}'
 
-        r = ObjectInstance(image=self.reference.image,
-                    image_name=self.reference.image_name,
-                    depth=self.reference.depth,
-                    bbox=self.reference.bbox,
-                    mask=self.reference.mask,
-                    label=f'REFERENCE | {self.reference.label}',
-                    intrinsic=self.reference.intrinsic,
-                    extrinsic=self.reference.extrinsic,
-                    confidence=self.reference.confidence,
-                    image_features=self.reference.image_features,
-                    orientation=self.reference.orientation,
-        )
-        
+        r = copy.copy(r)
+        r.label = f'REFERENCE | {r.label}'
+
         objs = [t, r]
+        
         if self.reference_2 is not None:
-            r2 = ObjectInstance(image=self.reference_2.image,
-                    image_name=self.reference_2.image_name,
-                    depth=self.reference_2.depth,
-                    bbox=self.reference_2.bbox,
-                    mask=self.reference_2.mask,
-                    label=f'REFERENCE 2 | {self.reference.label}',
-                    intrinsic=self.reference_2.intrinsic,
-                    extrinsic=self.reference_2.extrinsic,
-                    confidence=self.reference_2.confidence,
-                    image_features=self.reference_2.image_features,
-                    orientation=self.reference_2.orientation,
-            )
+            r2 = copy.copy(self.reference_2)
+            r2.label = f'REFERENCE 2 | {r2.label}'
             objs.append(r2)
-        plot_instances_3d(objs)
+        plot_objects_3d(objs)
 
 def get_primitive(primitive_str: str) -> SpatialPrimitive:
     out = None
