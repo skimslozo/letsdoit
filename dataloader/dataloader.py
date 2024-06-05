@@ -20,7 +20,7 @@ class DataLoader:
         
         
     def get_video_ids(self, visit_id: str) -> List[List[str]]:
-        """we
+        """
         Return the video ids for a given scene 
         """
         # os walk returns (dirpath, dirnames, filenames) so index 1 is what we need
@@ -205,6 +205,7 @@ class DataLoader:
         Return all the images for a given scene as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
         """
+
         images, images_rotated, image_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='rgb', 
                                                                                                 asset_type=asset_type,
                                                                                                 sample_freq=sample_freq)
@@ -217,6 +218,7 @@ class DataLoader:
         Return all the depths for a given scene as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
         """
+
         depths, depths_rotated, depth_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='depth', 
                                                                                               asset_type=asset_type,
                                                                                               sample_freq=sample_freq)

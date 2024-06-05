@@ -4,8 +4,7 @@ import numpy as np
 from enum import Enum
 from typing import Dict, List, Tuple
 
-from letsdoit.utils.object_instance import ObjectInstance, plot_instances_3d
-from letsdoit.utils.object_3d import Object3D, plot_objects_3d
+from pipeline.object_3d import Object3D, plot_objects_3d
 
 class ObjectType(Enum):
     TARGET=0

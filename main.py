@@ -1,9 +1,24 @@
-from masks_finder import MasksFinder
-from masks_matcher import MasksMatcher
-from clip_retriever import ClipRetriever
-from dataloader.dataloader import DataLoader
-from object_scorer import ObjectScorer
+import os
+import sys
+import yaml
+cwd = '/teamspace/studios/this_studio/letsdoit'
+if (cwd not in sys.path):
+    sys.path.append(cwd)
+sys.path.append(os.path.dirname(cwd))
+from pipeline.pipeline import Pipeline
+
+
+path_config = '/teamspace/studios/this_studio/letsdoit/config/config.yml'
 
 def main():
-    '''placeholder'''
-    pass
+
+    with open(path_config, 'r') as file:
+        cfg = yaml.safe_load(file)
+
+    pipe = Pipeline(**cfg)
+
+    pipe.run()
+    print('finish!')
+
+if __name__ == '__main__':
+    main()

@@ -5,10 +5,10 @@ from copy import deepcopy
 from human_id import generate_id
 
 from typing import List, Dict, Tuple, Optional
-from letsdoit.scoring.primitive import SpatialPrimitivePair, SpatialPrimitive, ObjectType, get_primitive, get_remaining_labels, check_object_type
-from letsdoit.utils.object_instance import ObjectInstance
-from letsdoit.utils.object_3d import Object3D
-from letsdoit.utils.misc import get_instances
+from scoring.primitive import SpatialPrimitivePair, SpatialPrimitive, ObjectType, get_primitive, get_remaining_labels, check_object_type
+from pipeline.object_instance import ObjectInstance, filter_instances
+from pipeline.object_3d import Object3D, filter_objects_3d
+
 
 class GraphNode:
     def __init__(self, primitives: List[Dict], all_objects: List[Object3D], 
@@ -144,12 +144,12 @@ class GraphNode:
         prim = get_primitive(primitive['primitive'])
         if prim == SpatialPrimitive.BETWEEN:
             child_otypes, child_labels = get_remaining_labels(otype, primitive)
-            ci1 = get_instances(child_labels[0], self.all_objs)
-            ci2 = get_instances(child_labels[1], self.all_objs)
+            ci1 = filter_objects_3d(child_labels[0], self.all_objs)
+            ci2 = filter_objects_3d(child_labels[1], self.all_objs)
             return ci1, child_otypes[0], ci2, child_otypes[2]
         else:
             child_otype, child_label = get_remaining_labels(otype, primitive)
-            child_instances = get_instances(child_label, self.all_objs)
+            child_instances = filter_objects_3d(child_label, self.all_objs)
         return child_instances, child_otype
 
     def _check_if_in_primitives(self, label) -> int | None:
@@ -184,13 +184,14 @@ def retrieve_best_action_object(instruction: dict, objects: List[Object3D]) -> O
     root = GraphNode(primitives=instruction['spatial_primitives'],
                     all_objects=objects,
                     root=True)
-    action_instances = get_instances(instruction['action_object'], objects)
+    action_instances = filter_objects_3d(instruction['action_object'], objects)
     root.expand(action_instances)
 
     node = root
     if len(node.children) == 0:
         return None
+    
     best_action_object_idx = np.argmax([child.best_score for child in node.children])
-    best_action_object = node.children[best_child].object
+    best_action_object = node.children[best_action_object_idx].object
     return best_action_object
     
