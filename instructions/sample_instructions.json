@@ -1,0 +1,29 @@
+[
+    {
+        "visit_id": 420683,
+        "instructions": [
+            {
+                "instruction": "Open the nightstand drawer on the right side of the bed",
+                "desc_id": "a2645cef-a1a7-4130-a26a-3863f9c9dff4",
+                "action_object": "drawer",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer", 
+                        "reference_object": "nightstand"
+                    },
+                    {
+                        "primitive": "to the right",
+                        "target_object": "nightstand",
+                        "reference_object": "bed"
+                    }
+                ]
+            }
+        ],
+        "all_objects": [
+            "drawer",
+            "nightstand",
+            "bed"
+        ]
+    }
+]
