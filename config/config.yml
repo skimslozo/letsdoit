@@ -11,3 +11,4 @@ merger_dist_thresh: 0.1
 merger_geo_similarity_thresh: 0.7
 merger_feat_similarity_thresh: 0.7
 merger_n_points: 1000
+path_submission_folder: '/teamspace/studios/this_studio/submission_opensun3d_track2'

@@ -6,6 +6,7 @@ import sys
 from typing import List
 import warnings
 
+import numpy as np
 import open3d as o3d
 import scipy
 from torch.nn import CosineSimilarity
@@ -18,7 +19,7 @@ from pipeline.masks_merger import MasksMerger
 from pipeline.object_instance import ObjectInstance, initialize_object_instances, plot_instances_3d, generate_masks_features, filter_instances
 from pipeline.object_3d import Object3D, plot_objects_3d, denoise_objects_3d, filter_objects_3d
 from dataloader.dataloader import DataLoader
-from utils.misc import select_ids 
+from utils.misc import select_ids, number2str
 
 from scoring.primitive import SpatialPrimitive, SpatialPrimitivePair, get_primitive
 from scoring.spatial_graph import GraphNode, retrieve_best_action_object
@@ -39,7 +40,8 @@ class Pipeline:
                  merger_dist_thresh=0.1, 
                  merger_geo_similarity_thresh=0.7, 
                  merger_feat_similarity_thresh=0.7,
-                 merger_n_points=1000):
+                 merger_n_points=1000,
+                 path_submission_folder=None):
 
         self.path_dataset = path_dataset
 
@@ -68,6 +70,7 @@ class Pipeline:
         self.path_instructions = path_instructions
         self.instruction_list = self._load_instruction_list()
         self.loader_sample_freq = loader_sample_freq
+        self.path_submission_folder = path_submission_folder
 
 
     def run(self):
@@ -81,15 +84,11 @@ class Pipeline:
 
     def _run_instruction_block(self, instruction_block: dict):
         visit_id = str(instruction_block['visit_id'])
-        video_ids = self.loader.get_video_ids(visit_id)
 
-        # TODO: rewrite the code s.t. we load all the videos together (modify the loader too)
-        video_id = video_ids[0]
-
-        self.pcd = self.loader.parser.get_highres_reconstruction(visit_id, video_id)
+        self.pcd = self.loader.parser.get_highres_reconstruction(visit_id, self.loader.get_video_ids(visit_id)[0])
 
         # Get both original and upright-rotated images and depths as outputs
-        dict_data = self._load_data(visit_id, video_id)
+        dict_data = self._load_data(visit_id)
         self.retriever.generate_image_features(dict_data['images_rotated'])
 
         object_labels = instruction_block['all_objects']
@@ -102,22 +101,60 @@ class Pipeline:
         
         action_objects = []
         for instruction in instructions:
-            action_objects.extend([retrieve_best_action_object(instruction, objects)])
+            action_object = retrieve_best_action_object(instruction, objects)
+
+            if self.path_submission_folder is not None:
+                self._save_instruction_result(visit_id, instruction, [action_object])
+            
+            action_objects.append(action_object)
 
         return action_objects
 
     
-    # TODO: make it indipendent from the video_id (load all videos together)
-    def _load_data(self, visit_id: str, video_id: str) -> dict:
+    def _save_instruction_result(self, visit_id: str, instruction: dict, action_objects: List[Object3D]):
+        """
+        Save the masks of the action_objects according to the opensun3d_track2 submission format
+        """
+        instruction_id = instruction["desc_id"]
+        file_name = visit_id + '_'+ instruction_id
+
+        action_masks = [action_object.pcd_mask.astype(np.uint8) for action_object in action_objects]
+        confidences = [1 for _ in action_objects]  # TODO: decide how to assign the mask confidence
+
+        dir_predicted_masks = 'predicted_masks'  # following submission convention
+        dir_predicted_masks_abs = os.path.join(self.path_submission_folder, dir_predicted_masks)
+
+        # create folders if they are not there yet
+        if not os.path.isdir(self.path_submission_folder):
+            os.mkdir(self.path_submission_folder)
+        if not os.path.isdir(dir_predicted_masks_abs):
+            os.mkdir(dir_predicted_masks_abs)
+
+        path_predicted_masks = []
+
+        # first create file with list of all the masks
+        with open(os.path.join(self.path_submission_folder, file_name + '.txt'), "w") as f:
+
+            for i, confidence in enumerate(confidences):
+                path_predicted_mask = os.path.join(dir_predicted_masks, f"{file_name}_{number2str(i)}.txt")
+                f.write(f"{path_predicted_mask} {confidence}\n")
+                path_predicted_masks.append(path_predicted_mask)
+
+        # save the masks as txt files
+        for mask, path_predicted_mask in zip(action_masks, path_predicted_masks):
+            with open(os.path.join(self.path_submission_folder, path_predicted_mask), 'w') as f:
+                for val in mask:
+                    f.write(f"{str(val)}\n")
+    
+
+    def _load_data(self, visit_id: str) -> dict:
 
         images, images_rotated, image_paths, intrinsics, poses, orientations = self.loader.get_images(visit_id, 
-                                                                                                    video_id, 
-                                                                                                    asset_type=self.data_asset_type, 
-                                                                                                    sample_freq=self.loader_sample_freq)
+                                                                                                      asset_type=self.data_asset_type, 
+                                                                                                      sample_freq=self.loader_sample_freq)
         depths, depths_rotated, depth_paths, _, _, _ = self.loader.get_depths(visit_id, 
-                                                                            video_id, 
-                                                                            asset_type=self.data_asset_type, 
-                                                                            sample_freq=self.loader_sample_freq)
+                                                                              asset_type=self.data_asset_type, 
+                                                                              sample_freq=self.loader_sample_freq)
                                                                     
         dict_data = {'images': images,
                      'images_rotated': images_rotated,

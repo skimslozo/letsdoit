@@ -24,8 +24,8 @@ class GraphNode:
         self.id = generate_id()
         self.all_objs = all_objects
         self.used_indices = used_indices if used_indices is not None else set()
-        if self.object is not None:
-            self.used_indices.add(self.all_objs.index(self.object))
+        # if self.object is not None:
+        #     self.used_indices.add(self.all_objs.index(self.object))
         if parent:
             self.score = parent.score
             self.level = parent.level + 1

@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Tuple
 
+import open3d as o3d
 import numpy as np
 from tqdm import tqdm
 
@@ -200,7 +201,7 @@ class DataLoader:
     
     #     return intrinsic_rotated
 
-    def get_images(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
+    def get_images_video_id(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
         """
         Return all the images for a given scene as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
@@ -211,9 +212,35 @@ class DataLoader:
                                                                                                 sample_freq=sample_freq)
 
         return images, images_rotated, image_paths, intrinsics, poses, orientations
+
+    
+    def get_images(self, visit_id, asset_type="lowres_wide", sample_freq=1):
+        """
+        Return all the images for a given scene as a numpy.ndarray with the RGB color values.
+        Pluse return the frame_paths, the intrinsics and the poses.
+        """
+
+        video_ids = self.get_video_ids(visit_id)
+
+        images_l, images_rotated_l, image_paths_l, intrinsics_l, poses_l, orientations_l = [], [], [], [], [], []
+
+        for video_id in video_ids:
+            images, images_rotated, image_paths, intrinsics, poses, orientations = self.get_images_video_id(visit_id, 
+                                                                                                            video_id, 
+                                                                                                            asset_type=asset_type, 
+                                                                                                            sample_freq=sample_freq)
+            images_l += images
+            images_rotated_l += images_rotated
+            image_paths_l += image_paths
+            intrinsics_l += intrinsics
+            poses_l += poses
+            orientations_l += orientations
+
+
+        return images_l, images_rotated_l, image_paths_l, intrinsics_l, poses_l, orientations_l
     
 
-    def get_depths(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
+    def get_depths_video_id(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
         """
         Return all the depths for a given scene as a numpy.ndarray with the RGB color values.
         Pluse return the frame_paths, the intrinsics and the poses.
@@ -225,6 +252,33 @@ class DataLoader:
 
         return depths, depths_rotated, depth_paths, intrinsics, poses, orientations
 
+    
+    def get_depths(self, visit_id, asset_type="lowres_wide", sample_freq=1):
+        """
+        Return all the depths for a given scene as a numpy.ndarray with the RGB color values.
+        Pluse return the frame_paths, the intrinsics and the poses.
+        """
+
+        video_ids = self.get_video_ids(visit_id)
+
+        depths_l, depths_rotated_l, depth_paths_l, intrinsics_l, poses_l, orientations_l = [], [], [], [], [], []
+
+        for video_id in video_ids:
+            depths, depths_rotated, depth_paths, intrinsics, poses, orientations = self.get_depths_video_id(visit_id, 
+                                                                                                            video_id, 
+                                                                                                            asset_type=asset_type, 
+                                                                                                            sample_freq=sample_freq)
+            depths_l += depths
+            depths_rotated_l += depths_rotated
+            depth_paths_l += depth_paths
+            intrinsics_l += intrinsics
+            poses_l += poses
+            orientations_l += orientations
+
+
+        return depths_l, depths_rotated_l, depth_paths_l, intrinsics_l, poses_l, orientations_l
+    
+
 
     def get_instructions(self, instructions_path: str) -> Dict:
         """
@@ -234,3 +288,7 @@ class DataLoader:
         with open(instructions_path, 'r') as file:
             instructions_dict = json.load(file)
         return instructions_dict
+
+
+    def load_pcd(self):
+
