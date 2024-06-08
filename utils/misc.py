@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 import numpy as np
 
 def inverseRigid(H):
@@ -36,3 +36,8 @@ def number2str(i: int, n_digits: int=3):
     str_number = '0' * diff_digits + str(i)
 
     return str_number
+
+def get_instruction(instruction_dict: List[Dict], visit_id: str, desc_id: str) -> str:
+    instructions_visit = [iv for iv in instruction_dict if iv['visit_id']==visit_id][0]
+    instruction = [ins['instruction'] for ins in instructions_visit['instructions'] if ins['desc_id']==desc_id][0]
+    return instruction
