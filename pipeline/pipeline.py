@@ -19,7 +19,7 @@ from pipeline.masks_merger import MasksMerger
 from pipeline.object_instance import ObjectInstance, initialize_object_instances, plot_instances_3d, generate_masks_features, filter_instances
 from pipeline.object_3d import Object3D, plot_objects_3d, denoise_objects_3d, filter_objects_3d
 from dataloader.dataloader import DataLoader
-from utils.misc import select_ids, number2str
+from letsdoit.utils.misc import select_ids, number2str
 
 from scoring.primitive import SpatialPrimitive, SpatialPrimitivePair, get_primitive
 from scoring.spatial_graph import GraphNode, retrieve_best_action_object
@@ -77,7 +77,8 @@ class Pipeline:
         action_objects = []
         for instruction_block in self.instruction_list:
             # TODO: save the masks as file somewhere
-            action_objects.append(self._run_instruction_block(instruction_block))
+            ao = self._run_instruction_block(instruction_block)
+            action_objects.append(ao)
 
         return action_objects
 
@@ -85,7 +86,7 @@ class Pipeline:
     def _run_instruction_block(self, instruction_block: dict):
         visit_id = str(instruction_block['visit_id'])
 
-        self.pcd = self.loader.parser.get_highres_reconstruction(visit_id, self.loader.get_video_ids(visit_id)[0])
+        self.pcd = self.loader.load_pcd(visit_id, self.loader.get_video_ids(visit_id)[0])
 
         # Get both original and upright-rotated images and depths as outputs
         dict_data = self._load_data(visit_id)
@@ -200,7 +201,7 @@ class Pipeline:
         # Rotate masks and bboxes back to the rotation of the original image
         mask_image_sizes = [best_images_rotated[idx].shape[:-1] for idx in image_ids]
         mask_image_orientations = select_ids(best_orientations, image_ids)
-        masks_unrotated = unrotate_masks(masks=masks, orientations=dict_data['orientations'])
+        masks_unrotated = unrotate_masks(masks=masks, orientations=mask_image_orientations)
         bboxes_unrotated = unrotate_bboxes(bboxes=bboxes, img_dims=mask_image_sizes, orientations=mask_image_orientations)
         image_features = generate_masks_features(self.clip_processor, self.clip_model, select_ids(best_images_rotated, image_ids), bboxes, masks)
 

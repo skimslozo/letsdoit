@@ -155,7 +155,7 @@ class GraphNode:
     def _check_if_in_primitives(self, label) -> int | None:
         p_idx = None
         for i, p in enumerate(self.primitives):
-            if (label in p['target_object']) or (label in p['reference_object']) or ((get_primitive(p['primitive']) == SpatialPrimitive.BETWEEN) and (label['reference_object_2'])):
+            if (label in p['target_object']) or (label in p['reference_object']) or ((get_primitive(p['primitive']) == SpatialPrimitive.BETWEEN) and (label in p['reference_object_2'])):
                 p_idx = i
                 break
         return p_idx

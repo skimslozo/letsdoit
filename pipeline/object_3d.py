@@ -10,7 +10,7 @@ from sklearn.cluster import DBSCAN
 from tqdm import tqdm
 
 from pipeline.object_instance import ObjectInstance
-from utils.misc import sample_points
+from letsdoit.utils.misc import sample_points
 
 
 

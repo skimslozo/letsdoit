@@ -1,5 +1,5 @@
-path_dataset: '/teamspace/studios/this_studio/datasets'
-path_instructions: '/teamspace/studios/this_studio/letsdoit/instructions/sample_instructions.json'
+path_dataset: '/teamspace/studios/this_studio/dataset'
+path_instructions: '/teamspace/studios/this_studio/letsdoit/sample_instructions.json'
 data_asset_type: 'wide'
 data_split: 'dev'
 loader_sample_freq: 1

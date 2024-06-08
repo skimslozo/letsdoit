@@ -103,6 +103,7 @@ class MasksFinder:
             boxes_filt[i] = boxes_filt[i] * torch.Tensor([W, H, W, H])
             boxes_filt[i][:2] -= boxes_filt[i][2:] / 2
             boxes_filt[i][2:] += boxes_filt[i][:2]
+            boxes_filt[i] = constrain_box(boxes_filt[i], (W, H))
 
         masks = self._predict_masks(image_cv2, boxes_filt)
         masks = [mask.cpu().squeeze().numpy() for mask in masks]
@@ -267,3 +268,12 @@ def unrotate_bboxes(bboxes: List[np.ndarray], img_dims: List[Tuple[float]], orie
                 new_u2, new_v2 = height - v2, u2
         bboxes_unrotated.append(np.array([new_u1, new_v1, new_u2, new_v2]))
     return bboxes_unrotated
+    
+def constrain_box(box, image_dims):
+    # Safeguard for bbox running out of bounds for some reason
+    w, h = image_dims
+    tmp = torch.vstack([torch.zeros(box.shape), box])
+    box = tmp.max(axis=0).values
+    tmp = torch.vstack([torch.tensor([w, h, w, h]), box])
+    box = tmp.min(axis=0).values
+    return box

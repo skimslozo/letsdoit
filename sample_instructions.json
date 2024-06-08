@@ -1,0 +1,564 @@
+[
+    {
+        "visit_id": "420683",
+        "instructions": [
+            {
+                "instruction": "Open the nightstand drawer on the right side of the bed",
+                "desc_id": "a2645cef-a1a7-4130-a26a-3863f9c9dff4",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "nightstand"
+                    },
+                    {
+                        "primitive": "to the right",
+                        "target_object": "nightstand",
+                        "reference_object": "bed"
+                    }
+                ]
+            },
+            {
+                "instruction": "Turn on the ceiling light",
+                "desc_id": "de9483a4-eeed-493b-83b1-720c34f14b01",
+                "action_object": "light switch",
+                "spatial_primitives": [
+                    {
+                        "primitive": "next to",
+                        "target_object": "light switch",
+                        "reference_object": "door"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the window above the radiator",
+                "desc_id": "96959633-e623-4a26-a3c5-e419e4fd174e",
+                "action_object": "handle",
+                "spatial_primitives": [
+                    {
+                        "primitive": "above",
+                        "target_object": "window",
+                        "reference_object": "radiator"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the top drawer of the dresser",
+                "desc_id": "76d18d56-2eed-4882-9e03-05038822e843",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "dresser"
+                    },
+                    {
+                        "primitive": "above",
+                        "target_object": "drawer",
+                        "reference_object": "dresser"
+                    }
+                ]
+            },
+            {
+                "instruction": "Plug the device in one of the sockets next to the radiator",
+                "desc_id": "7eaea371-b33b-4076-92b1-587a709c6c65",
+                "action_object": "socket",
+                "spatial_primitives": [
+                    {
+                        "primitive": "next to",
+                        "target_object": "socket",
+                        "reference_object": "radiator"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["knob", "drawer", "nightstand", "bed", "light switch", "door", "handle", "window", "radiator", "dresser", "socket", "device"]
+    },
+    {
+        "visit_id": "421013",
+        "instructions": [
+            {
+                "instruction": "Open the left wardrobe door",
+                "desc_id": "cff96fcc-0c1d-4058-9a2c-d9a4cdaa17fd",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "door"
+                    },
+                    {
+                        "primitive": "to the left",
+                        "target_object": "door",
+                        "reference_object": "wardrobe"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the bottom drawer of the wardrobe",
+                "desc_id": "8580f8b3-4a9b-4a68-a62e-aa106af7f60d",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "wardrobe"
+                    },
+                    {
+                        "primitive": "below",
+                        "target_object": "drawer",
+                        "reference_object": "wardrobe"
+                    }
+                ]
+            },
+            {
+                "instruction": "Turn on the lamp on the nightstand located to the left of the bed",
+                "desc_id": "548b5548-8f91-4368-ae2b-2ac2aab43c18",
+                "action_object": "light switch",
+                "spatial_primitives": [
+                    {
+                        "primitive": "next to",
+                        "target_object": "light switch",
+                        "reference_object": "lamp"
+                    },
+                    {
+                        "primitive": "above",
+                        "target_object": "lamp",
+                        "reference_object": "nightstand"
+                    },
+                    {
+                        "primitive": "to the left",
+                        "target_object": "nightstand",
+                        "reference_object": "bed"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["knob", "door", "wardrobe", "drawer", "light switch", "lamp", "nightstand", "bed"]
+    },
+    {
+        "visit_id": "421015",
+        "instructions": [
+            {
+                "instruction": "Adjust the stovetop's heat",
+                "desc_id": "1452bcee-329b-49b2-9dfe-495e6681628d",
+                "action_object": "heat dial",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "heat dial",
+                        "reference_object": "stovetop"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the microwave door",
+                "desc_id": "32a04c67-1c98-44e5-8d8e-4f10eba6ff20",
+                "action_object": "handle",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "handle",
+                        "reference_object": "door"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "door",
+                        "reference_object": "microwave"
+                    }
+                ]
+            },
+            {
+                "instruction": "Plug the device in the left socket behind the couch",
+                "desc_id": "6dfb09ec-3f05-48f1-aac6-22ef5ed60d16",
+                "action_object": "socket",
+                "spatial_primitives": [
+                    {
+                        "primitive": "to the left",
+                        "target_object": "socket",
+                        "reference_object": "couch"
+                    },
+                    {
+                        "primitive": "behind",
+                        "target_object": "socket",
+                        "reference_object": "couch"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["heat dial", "stovetop", "handle", "door", "microwave", "socket", "couch", "device"]
+    },
+    {
+        "visit_id": "421063",
+        "instructions": [
+            {
+                "instruction": "Flush the toilet",
+                "desc_id": "22ad30ea-13cb-4b9c-97bb-587a95545771",
+                "action_object": "flush lever",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "flush lever",
+                        "reference_object": "toilet"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the black bin next to the toilet",
+                "desc_id": "ebf0126c-7590-4ee1-a880-f49f7484255c",
+                "action_object": "lid",
+                "spatial_primitives": [
+                    {
+                        "primitive": "next to",
+                        "target_object": "black bin",
+                        "reference_object": "toilet"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["flush lever", "toilet", "lid", "black bin"]
+    },
+    {
+        "visit_id": "421254",
+        "instructions": [
+            {
+                "instruction": "Open the top right drawer of the cabinet with the TV on top",
+                "desc_id": "71e753ae-6ff4-478f-bbce-f528e8a6635d",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    },
+                    {
+                        "primitive": "below",
+                        "target_object": "cabinet",
+                        "reference_object": "TV"
+                    },
+                    {
+                        "primitive": "above",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    },
+                    {
+                        "primitive": "to the right",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the top drawer of the nightstand with the red table lamp on top",
+                "desc_id": "b0527669-4ade-4c0c-aebe-67da23c4b714",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "nightstand"
+                    },
+                    {
+                        "primitive": "below",
+                        "target_object": "nightstand",
+                        "reference_object": "red table lamp"
+                    }
+                ]
+            },
+            {
+                "instruction": "Unplug the TV from the power supply",
+                "desc_id": "609f3c02-2a0f-4d49-b228-65a2abecc82f",
+                "action_object": "power plug",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "power plug",
+                        "reference_object": "power supply"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["knob", "drawer", "cabinet", "TV", "nightstand", "red table lamp", "power plug", "power supply"]
+    },
+    {
+        "visit_id": "421267",
+        "instructions": [
+            {
+                "instruction": "Adjust the room's temperature using the radiator dial next to the curtain",
+                "desc_id": "ca21da70-f93a-4faa-bdb1-dac493ed7a28",
+                "action_object": "radiator dial",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "radiator dial",
+                        "reference_object": "radiator"
+                    },
+                    {
+                        "primitive": "next to",
+                        "target_object": "radiator dial",
+                        "reference_object": "curtain"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the top left drawer of the wooden cabinet with the flower vase and the picture on top",
+                "desc_id": "907bdd9d-4d49-456b-af16-972ca86bed65",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    },
+                    {
+                        "primitive": "below",
+                        "target_object": "cabinet",
+                        "reference_object": "flower vase"
+                    },
+                    {
+                        "primitive": "below",
+                        "target_object": "cabinet",
+                        "reference_object": "picture"
+                    },
+                    {
+                        "primitive": "above",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    },
+                    {
+                        "primitive": "to the left",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the left part of the window door",
+                "desc_id": "16be547d-9e01-4d51-aa9e-75209f4ac3f2",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "to the left",
+                        "target_object": "part",
+                        "reference_object": "window door"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["radiator dial", "radiator", "curtain", "knob", "drawer", "cabinet", "flower vase", "picture", "part", "window door"]
+    },
+    {
+        "visit_id": "422356",
+        "instructions": [
+            {
+                "instruction": "Turn on the TV using the remote control on the table",
+                "desc_id": "bd016cae-2e4c-4835-99ee-c2ca7594cb92",
+                "action_object": "remote control",
+                "spatial_primitives": [
+                    {
+                        "primitive": "above",
+                        "target_object": "remote control",
+                        "reference_object": "table"
+                    }
+                ]
+            },
+            {
+                "instruction": "Type using the keyboard on the desk",
+                "desc_id": "7aed0171-8c64-4b86-8e7c-76b2a3ed84c4",
+                "action_object": "keyboard",
+                "spatial_primitives": [
+                    {
+                        "primitive": "above",
+                        "target_object": "keyboard",
+                        "reference_object": "desk"
+                    }
+                ]
+            },
+            {
+                "instruction": "Turn on the fan",
+                "desc_id": "b31cde15-2683-41ab-8cb0-adea078cb888",
+                "action_object": "fan switch",
+                "spatial_primitives": []
+            },
+            {
+                "instruction": "Open the left drawer of the center table",
+                "desc_id": "1a34c850-6617-4a38-b80a-c781094205eb",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "to the left",
+                        "target_object": "drawer",
+                        "reference_object": "center table"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["remote control", "table", "keyboard", "desk", "fan switch", "knob", "drawer", "center table"]
+    },
+    {
+        "visit_id": "421602",
+        "instructions": [
+            {
+                "instruction": "Open the right door of the wooden closet next to the door",
+                "desc_id": "20fead92-89de-4c32-817d-9bfe0bd81806",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "door"
+                    },
+                    {
+                        "primitive": "to the right",
+                        "target_object": "door",
+                        "reference_object": "closet"
+                    },
+                    {
+                        "primitive": "next to",
+                        "target_object": "closet",
+                        "reference_object": "door"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the bottom drawer of the wooden cabinet between the window and the bed",
+                "desc_id": "6318073b-6b96-4f8d-a056-e0a3133ae99e",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    },
+                    {
+                        "primitive": "below",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    },
+                    {
+                        "primitive": "between",
+                        "target_object": "cabinet",
+                        "reference_object": "window",
+                        "reference_object_2": "bed"
+                    }
+                ]
+            },
+            {
+                "instruction": "Turn on the ceiling light",
+                "desc_id": "081ca794-063f-4cc5-bc1f-1fc2e49ce96b",
+                "action_object": "light switch",
+                "spatial_primitives": [
+                    {
+                        "primitive": "next to",
+                        "target_object": "light switch",
+                        "reference_object": "door"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["knob", "door", "closet", "drawer", "cabinet", "window", "bed", "light switch"]
+    },
+    {
+        "visit_id": "422007",
+        "instructions": [
+            {
+                "instruction": "Adjust the room's temperature using the radiator dial next to the toy stroller",
+                "desc_id": "6e4fba6c-36bb-4169-9ee1-37f4b1af501f",
+                "action_object": "radiator dial",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "radiator dial",
+                        "reference_object": "radiator"
+                    },
+                    {
+                        "primitive": "next to",
+                        "target_object": "radiator dial",
+                        "reference_object": "toy stroller"
+                    }
+                ]
+            },
+            {
+                "instruction": "Turn on the ceiling light",
+                "desc_id": "f776ef90-acec-473c-9698-376f3390ff7d",
+                "action_object": "light switch",
+                "spatial_primitives": [
+                    {
+                        "primitive": "next to",
+                        "target_object": "light switch",
+                        "reference_object": "door"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the bottom drawer of the white cabinet next to the wooden closet",
+                "desc_id": "513d9188-2116-4ea6-abf0-0dfc7e230ec1",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    },
+                    {
+                        "primitive": "below",
+                        "target_object": "drawer",
+                        "reference_object": "cabinet"
+                    },
+                    {
+                        "primitive": "next to",
+                        "target_object": "cabinet",
+                        "reference_object": "wooden closet"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["radiator dial", "radiator", "toy stroller", "light switch", "door", "knob", "drawer", "cabinet", "wooden closet"]
+    }
+]

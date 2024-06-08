@@ -290,5 +290,15 @@ class DataLoader:
         return instructions_dict
 
 
-    def load_pcd(self):
+    def load_pcd(self, visit_id, video_id):
+        """
+        Load the point cloud and transform it to the reference system of the video
+        """
+
+        pcd = self.parser.get_laser_scan(visit_id)
+        trans = self.parser.get_refined_transform(visit_id, video_id)
+
+        pcd_trans = pcd.transform(trans)
+
+        return pcd_trans
 

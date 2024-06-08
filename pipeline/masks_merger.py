@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from pipeline.object_instance import ObjectInstance
 from pipeline.object_3d import Object3D
-from utils.misc import sample_points
+from letsdoit.utils.misc import sample_points
 
 
 class MasksMerger:
