@@ -206,7 +206,7 @@ class Pipeline:
         image_features = generate_masks_features(self.clip_processor, self.clip_model, select_ids(best_images_rotated, image_ids), bboxes, masks)
 
         dict_object_instances = {'image_paths': select_ids(best_image_paths, image_ids),
-                                 'depths': select_ids(best_depths, image_ids),
+                                 'depth_paths': select_ids(best_depth_paths, image_ids),
                                  'bboxes': bboxes_unrotated,
                                  'masks': masks_unrotated,
                                  'labels': labels,

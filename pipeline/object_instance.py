@@ -1,4 +1,5 @@
 import copy
+import imageio
 from pathlib import Path
 from typing import List
 import uuid
@@ -13,7 +14,7 @@ from letsdoit.utils.misc import inverseRigid
 
 
 class ObjectInstance():
-    def __init__(self, image_path, depth, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation, image_features):
+    def __init__(self, image_path, depth_path, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation, image_features):
         self.bbox = bbox
         self.mask = mask
         self.label = label
@@ -21,23 +22,21 @@ class ObjectInstance():
         self.id = str(uuid.uuid4())
         self.orientation = orientation
         self.image_features = image_features.clone()
-
         self.intrinsic = intrinsic
         self.extrinsic = extrinsic
-        self.depth = depth
+
+        self.depth_path = depth_path
         self.image_path = image_path
         self.image_name = Path(image_path).name.replace('.png', '')
+
         self._center_2d = None
         self._center_3d = None
-        self._mask_3d = None
 
     @property
     def mask_3d(self):
-        if self._mask_3d is None:
-            mask_points = np.argwhere(self.mask)
-            mask_points = mask_points[:, [1, 0]].T
-            self._mask_3d = self._get_3d(mask_points)
-        return self._mask_3d
+        mask_points = np.argwhere(self.mask)
+        mask_points = mask_points[:, [1, 0]].T
+        return self._get_3d(mask_points)
     
     @property
     def center_2d(self):
@@ -54,8 +53,13 @@ class ObjectInstance():
     @property
     def image(self):
         # load the image from the path and return it
-        return cv2.imread(self.image_name) 
-
+        return imageio.v2.imread(self.image_path)
+    
+    @property
+    def depth(self):
+        # load the image from the path and return it
+        CONVERSION_FACTOR = 1000
+        return imageio.v2.imread(self.depth_path) / CONVERSION_FACTOR
     
     def _get_mask_center(self):
         # Calculate moments of the binary image
@@ -218,26 +222,26 @@ def plot_instances_3d(instances: List[ObjectInstance], subsample=True):
         instance.plot_3d(fig=fig, subsample=subsample, show=False)
     fig.show()
 
-def initialize_object_instances(image_paths, depths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations, image_features):
+def initialize_object_instances(image_paths, depth_paths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations, image_features):
     """
     Initialize a list of ObjectInstance objects
     """
 
     object_instances = []
     
-    for image_path, depth, bbox, mask, label, confidence, intrinsic, extrinsic, orientation, image_feature in zip(image_paths,
-                                                                                                                  depths,
-                                                                                                                  bboxes, 
-                                                                                                                  masks, 
-                                                                                                                  labels, 
-                                                                                                                  confidences, 
-                                                                                                                  intrinsics, 
-                                                                                                                  extrinsics, 
-                                                                                                                  orientations,
-                                                                                                                  image_features):
+    for image_path, depth_path, bbox, mask, label, confidence, intrinsic, extrinsic, orientation, image_feature in zip(image_paths,
+                                                                                                                       depth_paths,
+                                                                                                                       bboxes, 
+                                                                                                                       masks, 
+                                                                                                                       labels, 
+                                                                                                                       confidences, 
+                                                                                                                       intrinsics, 
+                                                                                                                       extrinsics, 
+                                                                                                                       orientations,
+                                                                                                                       image_features):
         
         object_instances.append(ObjectInstance(image_path,
-                                               depth,
+                                               depth_path,
                                                bbox,
                                                mask,
                                                label,
