@@ -117,34 +117,44 @@ class ObjectInstance():
         h, w = self.mask.shape[-2:]
         mask_img = self.mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
 
-        # rotate the image and the mask in according with the orientation
+        #bbox
+        x0, y0, w_bb, h_bb = self.bbox[0], self.bbox[1], self.bbox[2] - self.bbox[0], self.bbox[3] - self.bbox[1]
+        print('before', x0, y0, w_bb, h_bb)
+
+        # rotate the image, the mask and the bbox in according with the orientation
         match self.orientation:
             case 0:  # no rotation
                 image = self.image
             case 1:  # rotate 90 deg clockwise
                 image = cv2.rotate(self.image, cv2.ROTATE_90_CLOCKWISE)
                 mask_img = cv2.rotate(mask_img, cv2.ROTATE_90_CLOCKWISE)
+                # transform the coordinated of the bbox
+                x0, y0 = h - 1 - y0, x0
+                #x0, y0 = y0, w - 1 - x0
+                w_bb, h_bb = h_bb, w_bb
             case 2:  # rotate 180 deg
                 image = cv2.rotate(self.image, cv2.ROTATE_180)
                 mask_img = cv2.rotate(mask_img, cv2.ROTATE_180)
+                x0, y0 = w - 1 - x0, h - 1 - y0
             case 3:  # rotate 90 deg counter-clockwise
                 image = cv2.rotate(self.image, cv2.ROTATE_90_COUNTERCLOCKWISE)
                 mask_img = cv2.rotate(mask_img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                x0, y0 = y0, w - 1 - x0
+                #x0, y0 = h - 1 - y0, x0
+                w_bb, h_bb = h_bb, w_bb
             case _:
                 raise ValueError(f'Unexpected orientation int provided: {orientation}')
 
-        # resize mask and image
+        # resize mask, image and bbox
         image = cv2.resize(image, (0, 0), fx = scale_factor, fy = scale_factor)
         mask_img = cv2.resize(mask_img, (0, 0), fx = scale_factor, fy = scale_factor)
+        x0, y0, w_bb, h_bb = [int(elem * scale_factor) for elem in [x0, y0, w_bb, h_bb]]
 
         # Show mask and image
         ax.imshow(image)
         ax.imshow(mask_img)
 
-        #bbox
-        x0, y0, w, h = self.bbox[0], self.bbox[1], self.bbox[2] - self.bbox[0], self.bbox[3] - self.bbox[1]
-        x0, y0, w, h = [int(elem*scale_factor) for elem in [x0, y0, w, h]]  # scale them
-        ax.add_patch(plt.Rectangle((x0, y0), w, h, edgecolor='green', facecolor=(0,0,0,0), lw=2))
+        ax.add_patch(plt.Rectangle((x0, y0), w_bb, h_bb, edgecolor='green', facecolor=(0,0,0,0), lw=2))
         txt = ax.text(x0, y0, self.label+f' ({self.confidence:.2f})')
         col = np.random.rand(3)
         #ax.plot(self.center_2d[0], self.center_2d[1], 'o',  color=col, markersize=10)
