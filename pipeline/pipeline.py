@@ -205,8 +205,7 @@ class Pipeline:
         bboxes_unrotated = unrotate_bboxes(bboxes=bboxes, img_dims=mask_image_sizes, orientations=mask_image_orientations)
         image_features = generate_masks_features(self.clip_processor, self.clip_model, select_ids(best_images_rotated, image_ids), bboxes, masks)
 
-        dict_object_instances = {'images': select_ids(best_images, image_ids),
-                                 'image_names': [Path(img_path).name.replace('.png', '') for img_path in select_ids(best_image_paths, image_ids)],
+        dict_object_instances = {'image_names': select_ids(best_image_paths, image_ids),
                                  'depths': select_ids(best_depths, image_ids),
                                  'bboxes': bboxes_unrotated,
                                  'masks': masks_unrotated,

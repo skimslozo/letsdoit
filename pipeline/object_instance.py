@@ -13,7 +13,7 @@ from letsdoit.utils.misc import inverseRigid
 
 
 class ObjectInstance():
-    def __init__(self, image, image_name, depth, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation, image_features):
+    def __init__(self, image_path, depth, bbox ,mask, label, confidence, intrinsic, extrinsic, orientation, image_features):
         self.bbox = bbox
         self.mask = mask
         self.label = label
@@ -25,8 +25,8 @@ class ObjectInstance():
         self.intrinsic = intrinsic
         self.extrinsic = extrinsic
         self.depth = depth
-        self.image = image
-        self.image_name = image_name
+        self.image_path = image_path
+        self.image_name = Path(image_path).name.replace('.png', '')
         self._center_2d = None
         self._center_3d = None
         self._mask_3d = None
@@ -50,6 +50,11 @@ class ObjectInstance():
         if self._center_3d is None:
             self._center_3d = np.mean(self.mask_3d, axis=1)
         return self._center_3d
+    
+    @property
+    def image(self):
+        # load the image from the path and return it
+        return cv2.imread(self.image_name) 
 
     
     def _get_mask_center(self):
@@ -213,27 +218,25 @@ def plot_instances_3d(instances: List[ObjectInstance], subsample=True):
         instance.plot_3d(fig=fig, subsample=subsample, show=False)
     fig.show()
 
-def initialize_object_instances(images, image_names, depths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations, image_features):
+def initialize_object_instances(image_paths, depths, bboxes, masks, labels, confidences, intrinsics, extrinsics, orientations, image_features):
     """
     Initialize a list of ObjectInstance objects
     """
 
     object_instances = []
     
-    for image, image_name, depth, bbox, mask, label, confidence, intrinsic, extrinsic, orientation, image_feature in zip(images,
-                                                                                                                         image_names,
-                                                                                                                         depths,
-                                                                                                                         bboxes, 
-                                                                                                                         masks, 
-                                                                                                                         labels, 
-                                                                                                                         confidences, 
-                                                                                                                         intrinsics, 
-                                                                                                                         extrinsics, 
-                                                                                                                         orientations,
-                                                                                                                         image_features):
+    for image_path, depth, bbox, mask, label, confidence, intrinsic, extrinsic, orientation, image_feature in zip(image_paths,
+                                                                                                                  depths,
+                                                                                                                  bboxes, 
+                                                                                                                  masks, 
+                                                                                                                  labels, 
+                                                                                                                  confidences, 
+                                                                                                                  intrinsics, 
+                                                                                                                  extrinsics, 
+                                                                                                                  orientations,
+                                                                                                                  image_features):
         
-        object_instances.append(ObjectInstance(image,
-                                               image_name,
+        object_instances.append(ObjectInstance(image_path,
                                                depth,
                                                bbox,
                                                mask,
