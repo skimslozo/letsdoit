@@ -249,6 +249,7 @@ class Object3D:
         pcd_out = self.pcd.select_by_index(np.where(~self.pcd_mask & mask_smaller_pcd)[0])
 
         pcd_out = pcd_out.paint_uniform_color([0.8, 0.8, 0.8])
+        pcd_selected = pcd_selected.paint_uniform_color([1, 0, 0])
 
         open3d.visualization.draw_plotly([pcd_selected, pcd_out], point_sample_factor=point_sample_factor)
 

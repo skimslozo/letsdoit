@@ -2,6 +2,7 @@
 **/tmp.py
 **/tmp.ipynb
 *.pyc
+.tmp_runtime_files
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Union
 
 import numpy as np
 from PIL import Image
@@ -12,13 +12,14 @@ from tqdm import tqdm
 class ClipRetriever:
     def __init__(self, 
                  topk=10, 
-                 max_similarity_thresh=0.97):
+                 max_similarity_thresh=0.97,
+                 image_features: Union[torch.Tensor, str]=None):
                  
         self.model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
         self.processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+        self.topk = topk
+        self.max_similarity_thresh = max_similarity_thresh
         self.image_features = None
-        self.topk=topk
-        self.max_similarity_thresh=max_similarity_thresh
 
     def generate_image_features(self, images: List[np.ndarray]):
         """
@@ -29,6 +30,20 @@ class ClipRetriever:
         image_features = self.model.get_image_features(**inputs)
 
         self.image_features = image_features
+            
+
+    def update_image_features(self, image_features: Union[torch.Tensor, str]):
+        # check the image_features type
+        err_msg = "image_features needs to be a torch.Tensor or the path to a stored torch.Tensor!"
+        assert isinstance(image_features, torch.Tensor) or isinstance(image_features, str), err_msg
+
+        if isinstance(image_features, str):
+            # load the tensor from path
+            assert os.path.isfile(image_features), "image_features must be the path to an existing file!"
+            self.image_features = torch.load(image_features)
+        else:
+            # assign the tensor directly
+            self.image_features = image_features
 
 
     def retrieve_best_images_for_object(self, object: str) -> List[Image.Image]:

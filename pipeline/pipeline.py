@@ -11,6 +11,7 @@ import open3d as o3d
 import scipy
 from torch.nn import CosineSimilarity
 from transformers import CLIPProcessor, CLIPModel
+from memory_profiler import profile
 
 from pipeline.masks_matcher import MasksMatcher
 from pipeline.clip_retriever import ClipRetriever
@@ -18,7 +19,8 @@ from pipeline.masks_finder import MasksFinder, unrotate_masks, unrotate_bboxes
 from pipeline.masks_merger import MasksMerger
 from pipeline.object_instance import ObjectInstance, initialize_object_instances, plot_instances_3d, generate_masks_features, filter_instances
 from pipeline.object_3d import Object3D, plot_objects_3d, denoise_objects_3d, filter_objects_3d
-from dataloader.dataloader import DataLoader
+from dataloader.dataloader import DataLoader, TMP_STORAGE_PATH
+from dataloader.data_parser import rotate_pose
 from letsdoit.utils.misc import select_ids, number2str
 
 from scoring.primitive import SpatialPrimitive, SpatialPrimitivePair, get_primitive
@@ -26,7 +28,6 @@ from scoring.spatial_graph import GraphNode, retrieve_best_action_object
 
 
 class Pipeline:
-
     def __init__(self,
                  path_dataset,
                  path_instructions,
@@ -72,25 +73,30 @@ class Pipeline:
         self.loader_sample_freq = loader_sample_freq
         self.path_submission_folder = path_submission_folder
 
-
-    def run(self):
+    def run(self, debug=False):
         action_objects = []
         for instruction_block in self.instruction_list:
-            # TODO: save the masks as file somewhere
-            ao = self._run_instruction_block(instruction_block)
-            action_objects.append(ao)
+            # catch warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # run instruction block
+                ao = self._run_instruction_block(instruction_block, debug)
+            if debug:
+                action_objects.append(ao)
 
-        return action_objects
+        if debug:
+            return action_objects
 
-
-    def _run_instruction_block(self, instruction_block: dict):
+    def _run_instruction_block(self, instruction_block: dict, debug: bool):
         visit_id = str(instruction_block['visit_id'])
 
-        self.pcd = self.loader.load_pcd(visit_id, self.loader.get_video_ids(visit_id)[0])
-
-        # Get both original and upright-rotated images and depths as outputs
+        # load the point cloud
+        self.pcd = self.loader.load_pcd(visit_id)
+        # load image_paths, poses, depth_paths, etc.
         dict_data = self._load_data(visit_id)
-        self.retriever.generate_image_features(dict_data['images_rotated'])
+        # load image_features
+        image_features_path = self.loader.get_image_features_path(visit_id)
+        self.retriever.update_image_features(image_features_path) 
 
         object_labels = instruction_block['all_objects']
         instructions = instruction_block['instructions']
@@ -107,11 +113,13 @@ class Pipeline:
             if self.path_submission_folder is not None:
                 self._save_instruction_result(visit_id, instruction, [action_object])
             
-            action_objects.append(action_object)
+            if debug:
+                action_objects.append(action_object)
 
-        return action_objects
+        if debug:
+            return action_objects
+        #self._cleanup()
 
-    
     def _save_instruction_result(self, visit_id: str, instruction: dict, action_objects: List[Object3D]):
         """
         Save the masks of the action_objects according to the opensun3d_track2 submission format
@@ -147,35 +155,28 @@ class Pipeline:
                 for val in mask:
                     f.write(f"{str(val)}\n")
     
-
     def _load_data(self, visit_id: str) -> dict:
 
-        images, images_rotated, image_paths, intrinsics, poses, orientations = self.loader.get_images(visit_id, 
-                                                                                                      asset_type=self.data_asset_type, 
-                                                                                                      sample_freq=self.loader_sample_freq)
-        depths, depths_rotated, depth_paths, _, _, _ = self.loader.get_depths(visit_id, 
+        image_paths, intrinsics, poses, orientations = self.loader.get_images(visit_id,
                                                                               asset_type=self.data_asset_type, 
                                                                               sample_freq=self.loader_sample_freq)
+        depth_paths, _, _, _ = self.loader.get_depths(visit_id, 
+                                                      asset_type=self.data_asset_type, 
+                                                      sample_freq=self.loader_sample_freq)
                                                                     
-        dict_data = {'images': images,
-                     'images_rotated': images_rotated,
-                     'image_paths': image_paths,
+        dict_data = {'image_paths': image_paths,
                      'intrinsics': intrinsics,
                      'poses': poses,
                      'orientations': orientations,
-                     'depths': depths,
-                     'depths_rotated': depths_rotated,
                      'depth_paths': depth_paths}
         
         return dict_data
-
 
     def _load_instruction_list(self) -> List[dict]:
         # load instructions from json file
         with open(self.path_instructions, 'r') as file:
             instruction_list = json.load(file)
         return instruction_list
-
 
     def _get_objects_3d(self, object_label: str, dict_data: dict) -> List[Object3D]:
         object_instances = self._get_object_instances(object_label, dict_data)
@@ -186,13 +187,12 @@ class Pipeline:
     # For an object, get a list of corresponding ObjectInstances
     def _get_object_instances(self, object_label: str, dict_data: dict) -> List[ObjectInstance]:
         best_indices = self.retriever.retrieve_best_images_for_object(object_label)
-        best_images = select_ids(dict_data['images'], best_indices)
-        best_images_rotated = select_ids(dict_data['images_rotated'], best_indices)
+        # best_images_rotated = select_ids(dict_data['images_rotated'], best_indices)
+        best_images_rotated = [rotate_pose(self.loader.parser.read_rgb_frame(dict_data['image_paths'][i]), dict_data['orientations'][i]) for i in best_indices]
         best_image_paths = select_ids(dict_data['image_paths'], best_indices)
         best_intrinsics = select_ids(dict_data['intrinsics'], best_indices)
         best_poses = select_ids(dict_data['poses'], best_indices)
         best_orientations = select_ids(dict_data['orientations'], best_indices)
-        best_depths = select_ids(dict_data['depths'], best_indices)
         best_depth_paths = select_ids(dict_data['depth_paths'], best_indices)
 
         # Masks we get here as outputs are for the upright-rotated images
@@ -220,5 +220,6 @@ class Pipeline:
         object_instances = initialize_object_instances(**dict_object_instances)
 
         return object_instances
-            
 
+    def _cleanup(self):
+        self.loader.cleanup()

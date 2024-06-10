@@ -42,6 +42,11 @@
                 "action_object": "handle",
                 "spatial_primitives": [
                     {
+                        "primitive": "contains",
+                        "target_object": "handle",
+                        "reference_object": "window"
+                    },
+                    {
                         "primitive": "above",
                         "target_object": "window",
                         "reference_object": "radiator"

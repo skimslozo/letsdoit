@@ -1,13 +1,17 @@
 import os
 import json
+import shutil
 from pathlib import Path
 from typing import List, Dict, Tuple
 
-import open3d as o3d
+import imageio
 import numpy as np
 from tqdm import tqdm
 
-from dataloader.data_parser import DataParser, decide_pose, rotate_pose
+from dataloader.data_parser import DataParser, decide_pose#, rotate_pose
+from utils.misc import inverseRigid
+
+TMP_STORAGE_PATH = Path('/teamspace/studios/this_studio/letsdoit/.tmp_runtime_files')
 
 class DataLoader:
 
@@ -16,8 +20,8 @@ class DataLoader:
         self.parser = DataParser(data_root_path, split=split)
 
         self.visit_ids = os.listdir(self.parser.data_root_path)
-        self.visit_paths = {scene: os.path.join(self.parser.data_root_path, scene) 
-                             for scene in self.visit_ids}
+        self.visit_paths = {visit_id: os.path.join(self.parser.data_root_path, visit_id) 
+                             for visit_id in self.visit_ids}
         
         
     def get_video_ids(self, visit_id: str) -> List[List[str]]:
@@ -99,22 +103,23 @@ class DataLoader:
 
         frame_paths, intrinsics, poses = self._get_framepaths_intrisics_poses(visit_id, video_id, format=format, asset_type=asset_type, sample_freq=sample_freq)
 
-        frames = []
+        # frames = []
         orientations = []
-        frames_rotated = []
+        # frames_rotated = []
 
         description = f'Loading {format} frames from visit {visit_id} and video {video_id}'
         for i, (frame_path, pose) in tqdm(enumerate(zip(frame_paths, poses)), total=len(frame_paths), desc=description):
-            if format == 'rgb':
-                frame = self.parser.read_rgb_frame(frame_path)
-            else:
-                frame = self.parser.read_depth_frame(frame_path)
+            # if format == 'rgb':
+            #     # frame = self.parser.read_rgb_frame(frame_path)
+            # else:
+            #     # frame = self.parser.read_depth_frame(frame_path)
             orientation = decide_pose(pose)
-            frames.append(frame)
-            frames_rotated.append(rotate_pose(frame, orientation))
+            # frames.append(frame)
+            # frames_rotated.append(rotate_pose(frame, orientation))
             orientations.append(orientation)
 
-        return frames, frames_rotated, frame_paths, intrinsics, poses, orientations
+        # return frames, frames_rotated, frame_paths, intrinsics, poses, orientations
+        return frame_paths, intrinsics, poses, orientations
 
 
     """
@@ -207,11 +212,16 @@ class DataLoader:
         Pluse return the frame_paths, the intrinsics and the poses.
         """
 
-        images, images_rotated, image_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='rgb', 
+        # images, images_rotated, image_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='rgb', 
+        #                                                                                         asset_type=asset_type,
+        #                                                                                         sample_freq=sample_freq)
+
+        image_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='rgb', 
                                                                                                 asset_type=asset_type,
                                                                                                 sample_freq=sample_freq)
 
-        return images, images_rotated, image_paths, intrinsics, poses, orientations
+        # return images, images_rotated, image_paths, intrinsics, poses, orientations
+        return image_paths, intrinsics, poses, orientations
 
     
     def get_images(self, visit_id, asset_type="lowres_wide", sample_freq=1):
@@ -222,22 +232,33 @@ class DataLoader:
 
         video_ids = self.get_video_ids(visit_id)
 
-        images_l, images_rotated_l, image_paths_l, intrinsics_l, poses_l, orientations_l = [], [], [], [], [], []
+        # images_l, images_rotated_l, image_paths_l, intrinsics_l, poses_l, orientations_l = [], [], [], [], [], []
 
-        for video_id in video_ids:
-            images, images_rotated, image_paths, intrinsics, poses, orientations = self.get_images_video_id(visit_id, 
-                                                                                                            video_id, 
-                                                                                                            asset_type=asset_type, 
-                                                                                                            sample_freq=sample_freq)
-            images_l += images
-            images_rotated_l += images_rotated
+        image_paths_l, intrinsics_l, poses_l, orientations_l = [], [], [], []
+
+        transformations = [self.parser.get_refined_transform(visit_id, video_id) for video_id in video_ids]
+        rel_transformations = self._relative_transformation(transformations) 
+
+        for video_id, trans in zip(video_ids, rel_transformations):
+            # images, images_rotated, image_paths, intrinsics, poses, orientations = self.get_images_video_id(visit_id, 
+            #                                                                                                 video_id, 
+            #                                                                                                 asset_type=asset_type, 
+            #                                                                                                 sample_freq=sample_freq)
+
+            image_paths, intrinsics, poses, orientations = self.get_images_video_id(visit_id, 
+                                                                                    video_id, 
+                                                                                    asset_type=asset_type, 
+                                                                                    sample_freq=sample_freq)
+            # images_l += images
+            # images_rotated_l += images_rotated
             image_paths_l += image_paths
             intrinsics_l += intrinsics
-            poses_l += poses
+            poses_l += [trans @ pose for pose in poses]
             orientations_l += orientations
 
 
-        return images_l, images_rotated_l, image_paths_l, intrinsics_l, poses_l, orientations_l
+        # return images_l, images_rotated_l, image_paths_l, intrinsics_l, poses_l, orientations_l
+        return image_paths_l, intrinsics_l, poses_l, orientations_l
     
 
     def get_depths_video_id(self, visit_id, video_id, asset_type="lowres_wide", sample_freq=1):
@@ -246,11 +267,15 @@ class DataLoader:
         Pluse return the frame_paths, the intrinsics and the poses.
         """
 
-        depths, depths_rotated, depth_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='depth', 
-                                                                                              asset_type=asset_type,
-                                                                                              sample_freq=sample_freq)
+        # depths, depths_rotated, depth_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='depth', 
+        #                                                                                       asset_type=asset_type,
+        #                                                                                       sample_freq=sample_freq)
 
-        return depths, depths_rotated, depth_paths, intrinsics, poses, orientations
+        depth_paths, intrinsics, poses, orientations = self._get_frames_framepaths_intrinsics_poses_orientations(visit_id, video_id, format='depth', 
+                                                                                                                asset_type=asset_type,
+                                                                                                                sample_freq=sample_freq)
+
+        return depth_paths, intrinsics, poses, orientations
 
     
     def get_depths(self, visit_id, asset_type="lowres_wide", sample_freq=1):
@@ -263,20 +288,30 @@ class DataLoader:
 
         depths_l, depths_rotated_l, depth_paths_l, intrinsics_l, poses_l, orientations_l = [], [], [], [], [], []
 
-        for video_id in video_ids:
-            depths, depths_rotated, depth_paths, intrinsics, poses, orientations = self.get_depths_video_id(visit_id, 
-                                                                                                            video_id, 
-                                                                                                            asset_type=asset_type, 
-                                                                                                            sample_freq=sample_freq)
-            depths_l += depths
-            depths_rotated_l += depths_rotated
+        transformations = [self.parser.get_refined_transform(visit_id, video_id) for video_id in video_ids]
+        rel_transformations = self._relative_transformation(transformations) 
+
+        for video_id, trans in zip(video_ids, rel_transformations):
+            # depths, depths_rotated, depth_paths, intrinsics, poses, orientations = self.get_depths_video_id(visit_id, 
+            #                                                                                                 video_id, 
+            #                                                                                                 asset_type=asset_type, 
+                                                                                                            # sample_freq=sample_freq)
+
+            depth_paths, intrinsics, poses, orientations = self.get_depths_video_id(visit_id,
+                                                                                    video_id, 
+                                                                                    asset_type=asset_type,
+                                                                                    sample_freq=sample_freq)
+            
+            # depths_l += depths
+            # depths_rotated_l += depths_rotated
             depth_paths_l += depth_paths
             intrinsics_l += intrinsics
-            poses_l += poses
+            poses_l += [trans @ pose for pose in poses]
             orientations_l += orientations
 
 
-        return depths_l, depths_rotated_l, depth_paths_l, intrinsics_l, poses_l, orientations_l
+        # return depths_l, depths_rotated_l, depth_paths_l, intrinsics_l, poses_l, orientations_l
+        return depth_paths_l, intrinsics_l, poses_l, orientations_l
     
 
 
@@ -290,10 +325,12 @@ class DataLoader:
         return instructions_dict
 
 
-    def load_pcd(self, visit_id, video_id):
+    def load_pcd(self, visit_id):
         """
         Load the point cloud and transform it to the reference system of the video
         """
+
+        video_id = self.get_video_ids(visit_id)[0]
 
         pcd = self.parser.get_laser_scan(visit_id)
         trans = self.parser.get_refined_transform(visit_id, video_id)
@@ -302,3 +339,47 @@ class DataLoader:
 
         return pcd_trans
 
+    
+    def get_image_features_path(self, visit_id):
+        # return the path to the image features for the given visit_id
+
+        path_visit_id = self.visit_paths[visit_id]
+        path_image_features = os.path.join(path_visit_id, f"{visit_id}_image_features.pt")
+        return path_image_features
+
+
+    @staticmethod
+    def _relative_transformation(transformations):
+        """
+        Given transformations=[T_{w,c1}, T_{w,c2}, ..., T_{w,cN}] returns
+        [T_{c1,c1}, T_{c2,c1}, ..., T_{cN,c1}]
+        """
+
+        inverse_transformations = [inverseRigid(trans) for trans in transformations]
+
+        relative_trans = [inverse_t @ transformations[0] for inverse_t 
+                          in inverse_transformations]
+        return relative_trans
+
+
+    def _tmp_frame_save(self, frame: np.ndarray, original_path: str, appendix: str) -> str:
+        opath = Path(original_path)
+        save_path = TMP_STORAGE_PATH / opath.parent.name
+        os.makedirs(save_path, exist_ok=True)
+        save_img_path = str(save_path / (appendix + str(opath.name)))
+        imageio.v2.imwrite(save_img_path, frame)
+        return save_img_path
+
+    def cleanup(self):
+        print('Removing temporary runtime files')
+        for item in os.listdir(TMP_STORAGE_PATH):
+            item_path = os.path.join(TMP_STORAGE_PATH, item)
+            try:
+                # Check if the item is a file
+                if os.path.isfile(item_path) or os.path.islink(item_path):
+                    os.remove(item_path)
+                # Check if the item is a directory
+                elif os.path.isdir(item_path):
+                    shutil.rmtree(item_path)
+            except Exception as e:
+                print(f'Failed to delete {item_path}. Reason: {e}')
