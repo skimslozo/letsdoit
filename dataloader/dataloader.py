@@ -351,13 +351,13 @@ class DataLoader:
     @staticmethod
     def _relative_transformation(transformations):
         """
-        Given transformations=[T_{w,c1}, T_{w,c2}, ..., T_{w,cN}] returns
+        Given transformations=[T_{pcd,w1}, T_{pcd,w2}, ..., T_{pcd,wN}] returns
         [T_{c1,c1}, T_{c2,c1}, ..., T_{cN,c1}]
         """
 
         inverse_transformations = [inverseRigid(trans) for trans in transformations]
 
-        relative_trans = [inverse_t @ transformations[0] for inverse_t 
+        relative_trans = [transformations[0] @ inverse_t for inverse_t 
                           in inverse_transformations]
         return relative_trans
 

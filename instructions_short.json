@@ -1,0 +1,93 @@
+[
+    {
+        "visit_id": "420683",
+        "instructions": [
+            {
+                "instruction": "Open the nightstand drawer on the right side of the bed",
+                "desc_id": "a2645cef-a1a7-4130-a26a-3863f9c9dff4",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "nightstand"
+                    },
+                    {
+                        "primitive": "to the right",
+                        "target_object": "nightstand",
+                        "reference_object": "bed"
+                    }
+                ]
+            },
+            {
+                "instruction": "Turn on the ceiling light",
+                "desc_id": "de9483a4-eeed-493b-83b1-720c34f14b01",
+                "action_object": "light switch",
+                "spatial_primitives": [
+                    {
+                        "primitive": "next to",
+                        "target_object": "light switch",
+                        "reference_object": "door"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the window above the radiator",
+                "desc_id": "96959633-e623-4a26-a3c5-e419e4fd174e",
+                "action_object": "handle",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "handle",
+                        "reference_object": "window"
+                    },
+                    {
+                        "primitive": "above",
+                        "target_object": "window",
+                        "reference_object": "radiator"
+                    }
+                ]
+            },
+            {
+                "instruction": "Open the top drawer of the dresser",
+                "desc_id": "76d18d56-2eed-4882-9e03-05038822e843",
+                "action_object": "knob",
+                "spatial_primitives": [
+                    {
+                        "primitive": "contains",
+                        "target_object": "knob",
+                        "reference_object": "drawer"
+                    },
+                    {
+                        "primitive": "contains",
+                        "target_object": "drawer",
+                        "reference_object": "dresser"
+                    },
+                    {
+                        "primitive": "above",
+                        "target_object": "drawer",
+                        "reference_object": "dresser"
+                    }
+                ]
+            },
+            {
+                "instruction": "Plug the device in one of the sockets next to the radiator",
+                "desc_id": "7eaea371-b33b-4076-92b1-587a709c6c65",
+                "action_object": "socket",
+                "spatial_primitives": [
+                    {
+                        "primitive": "next to",
+                        "target_object": "socket",
+                        "reference_object": "radiator"
+                    }
+                ]
+            }
+        ],
+        "all_objects": ["knob", "drawer", "nightstand", "bed", "light switch", "door", "handle", "window", "radiator", "dresser", "socket", "device"]
+    }
+]

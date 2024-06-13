@@ -42,7 +42,9 @@ class Pipeline:
                  merger_geo_similarity_thresh=0.7, 
                  merger_feat_similarity_thresh=0.7,
                  merger_n_points=1000,
-                 path_submission_folder=None):
+                 object_proximity_thresh=0.1,
+                 path_submission_folder=None,
+                 debug=False):
 
         self.path_dataset = path_dataset
 
@@ -71,23 +73,25 @@ class Pipeline:
         self.path_instructions = path_instructions
         self.instruction_list = self._load_instruction_list()
         self.loader_sample_freq = loader_sample_freq
+        self.object_proximity_thresh = object_proximity_thresh
         self.path_submission_folder = path_submission_folder
+        self.debug = debug
 
-    def run(self, debug=False):
+    def run(self):
         action_objects = []
         for instruction_block in self.instruction_list:
             # catch warnings
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # run instruction block
-                ao = self._run_instruction_block(instruction_block, debug)
-            if debug:
+                ao = self._run_instruction_block(instruction_block)
+            if self.debug:
                 action_objects.append(ao)
 
-        if debug:
+        if self.debug:
             return action_objects
 
-    def _run_instruction_block(self, instruction_block: dict, debug: bool):
+    def _run_instruction_block(self, instruction_block: dict):
         visit_id = str(instruction_block['visit_id'])
 
         # load the point cloud
@@ -113,12 +117,11 @@ class Pipeline:
             if self.path_submission_folder is not None:
                 self._save_instruction_result(visit_id, instruction, [action_object])
             
-            if debug:
+            if self.debug:
                 action_objects.append(action_object)
 
-        if debug:
+        if self.debug:
             return action_objects
-        #self._cleanup()
 
     def _save_instruction_result(self, visit_id: str, instruction: dict, action_objects: List[Object3D]):
         """
@@ -128,7 +131,7 @@ class Pipeline:
         file_name = visit_id + '_'+ instruction_id
 
         action_masks = [action_object.pcd_mask.astype(np.uint8) for action_object in action_objects]
-        confidences = [1 for _ in action_objects]  # TODO: decide how to assign the mask confidence
+        confidences = [1. for _ in action_objects]  # TODO: decide how to assign the mask confidence
 
         dir_predicted_masks = 'predicted_masks'  # following submission convention
         dir_predicted_masks_abs = os.path.join(self.path_submission_folder, dir_predicted_masks)
@@ -180,7 +183,7 @@ class Pipeline:
 
     def _get_objects_3d(self, object_label: str, dict_data: dict) -> List[Object3D]:
         object_instances = self._get_object_instances(object_label, dict_data)
-        objects_3d = self.masks_merger(object_instances, self.pcd)
+        objects_3d = self.masks_merger(object_instances, self.pcd, object_proximity_thresh=self.object_proximity_thresh)
         denoise_objects_3d(objects_3d)
         return objects_3d
 

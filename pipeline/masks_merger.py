@@ -33,7 +33,8 @@ class MasksMerger:
         self.n_points = n_points
         
     
-    def __call__(self, object_instances: List[ObjectInstance], pcd: open3d.pybind.geometry.PointCloud) -> List[Object3D]:
+    def __call__(self, object_instances: List[ObjectInstance], pcd: open3d.pybind.geometry.PointCloud,
+                 object_proximity_thresh: float=0.1) -> List[Object3D]:
         """
         Given a list of ObjectInstance, match them and return a list of Object3D.
         pcd is a point cloud
@@ -44,7 +45,7 @@ class MasksMerger:
         for object_instance in tqdm(object_instances, desc='Merging the object instances'):
 
             if len(objects_3d) == 0:
-                objects_3d.append(Object3D(object_instance, pcd))
+                objects_3d.append(Object3D(object_instance, pcd, proximity_thresh=object_proximity_thresh))
 
             else:
                 # we need to assign the object_instance to a object_3d
@@ -52,7 +53,7 @@ class MasksMerger:
 
                 if idx == -1:
                     # no object_3d has been found as a match
-                    objects_3d.append(Object3D(object_instance, pcd))
+                    objects_3d.append(Object3D(object_instance, pcd, proximity_thresh=object_proximity_thresh))
 
                 else:
                     # the match has been found, we integrate the object_instance in the object_3d

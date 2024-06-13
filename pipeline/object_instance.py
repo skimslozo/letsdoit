@@ -119,7 +119,6 @@ class ObjectInstance():
 
         #bbox
         x0, y0, w_bb, h_bb = self.bbox[0], self.bbox[1], self.bbox[2] - self.bbox[0], self.bbox[3] - self.bbox[1]
-        print('before', x0, y0, w_bb, h_bb)
 
         # rotate the image, the mask and the bbox in according with the orientation
         match self.orientation:

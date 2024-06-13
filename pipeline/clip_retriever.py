@@ -97,3 +97,9 @@ class ClipRetriever:
         object_prompt = ' '.join(objects)
         return self.retrieve_best_images_for_object(object_prompt)
 
+    def __del__(self):
+        del self.model 
+        del self.processor
+        del self.max_similarity_thresh
+        del self.image_features
+        del self

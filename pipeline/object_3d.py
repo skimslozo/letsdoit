@@ -10,16 +10,17 @@ from sklearn.cluster import DBSCAN
 from tqdm import tqdm
 
 from pipeline.object_instance import ObjectInstance
-from letsdoit.utils.misc import sample_points
+from utils.misc import sample_points
 
 
 
 class Object3D:
 
     def __init__(self, object_instance: ObjectInstance, pcd: open3d.pybind.geometry.PointCloud, 
-                 label: str=None, max_points: int=10000):
+                 label: str=None, max_points: int=10000, proximity_thresh: float=0.1):
 
         self.max_points = max_points
+        self.proximity_thresh = proximity_thresh
         self.points = sample_points(np.unique(object_instance.mask_3d, axis=1), n=self.max_points)
         self.confidence = object_instance.confidence
         self.image_features = object_instance.image_features
@@ -50,15 +51,15 @@ class Object3D:
         return np.mean(points, axis=1)
 
     @property
-    def pcd_points(self, n_sampled=500, proximity_thresh=0.1):
+    def pcd_points(self, n_sampled=500):
         if self._pcd_points is None:
-            self._pcd_points, self._pcd_mask = self.select_pcd_points(n_sampled=500, proximity_thresh=0.1)
+            self._pcd_points, self._pcd_mask = self.select_pcd_points(n_sampled=500)
         return self._pcd_points
 
     @property
-    def pcd_mask(self, n_sampled=500, proximity_thresh=0.1):
+    def pcd_mask(self, n_sampled=500):
         if self._pcd_mask is None:
-            self._pcd_points, self._pcd_mask = self.select_pcd_points(n_sampled=500, proximity_thresh=0.1)
+            self._pcd_points, self._pcd_mask = self.select_pcd_points(n_sampled=500)
         return self._pcd_mask
 
     def add_object_instance(self, object_instance: ObjectInstance):
@@ -149,7 +150,6 @@ class Object3D:
         
         else:
             dict_count = dict(Counter(labels))
-            print(dict_count)
 
             # find biggest cluster
             biggest_cluster = -1
@@ -168,21 +168,21 @@ class Object3D:
         return sample_points(self.points, n_points)
 
 
-    def select_pcd_points(self, n_sampled=500, proximity_thresh=0.1):
+    def select_pcd_points(self, n_sampled=500):
         
         pcd_points = np.asarray(self.pcd.points).T
         points = self.sampled_points(n_sampled)
 
         # 1. Select region of the pcd close to our object_3d
-        #pcd_bbox, mask_pcd_bbox = self._select_roi(pcd_points, points, thresh=proximity_thresh/2)
-        pcd_bbox, mask_pcd_bbox = self._select_roi(pcd_points, points, thresh=0)
+        #pcd_bbox, mask_pcd_bbox = self._select_roi(pcd_points, points, thresh=proximity_thresh)
+        pcd_bbox, mask_pcd_bbox = self._select_roi(pcd_points, points, thresh=0.)
 
         # 2. compute the distance between the points in the pcd and in the object_3d
         distances = scipy.spatial.distance_matrix(pcd_bbox.T, points.T)
 
         # 3. select points in the pt cloud based on their distance to the points in the pcd
         nn_distances = distances.min(axis=1)  # nearest neighbours distances
-        mask_bbox_selected = nn_distances < proximity_thresh
+        mask_bbox_selected = nn_distances < self.proximity_thresh
         mask_pcd_selected = self._combine_masks(mask_pcd_bbox, mask_bbox_selected)
 
         pcd_points = pcd_bbox[:, mask_bbox_selected]
