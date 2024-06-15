@@ -44,6 +44,10 @@ class MasksMerger:
 
         for object_instance in tqdm(object_instances, desc='Merging the object instances'):
 
+            # handle edge case
+            if object_instance.mask_3d.shape[1] == 0:
+                continue
+
             if len(objects_3d) == 0:
                 objects_3d.append(Object3D(object_instance, pcd, proximity_thresh=object_proximity_thresh))
 
@@ -114,6 +118,9 @@ class MasksMerger:
         Compute the similarity as the percentage of points which has a nearest neighbour in the 
         other point cloud at a distance < threshold
         """
+
+        if points1.shape[1] == 0 or points2.shape[1] == 0:
+            return 0.
 
         points1 = sample_points(points1, n=self.n_points)
         points2 = sample_points(points2, n=self.n_points)

@@ -3,7 +3,7 @@ from scoring.primitive import get_primitive, SpatialPrimitive
 
 
 
-with open('/teamspace/studios/this_studio/letsdoit/sample_instructions.json') as f:
+with open('/teamspace/studios/this_studio/letsdoit/descriptions_out.json') as f:
     instruction_list = json.load(f)
 
 

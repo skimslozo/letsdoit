@@ -10,7 +10,7 @@ import numpy as np
 import plotly.graph_objects as go
 from transformers import CLIPProcessor, CLIPModel
 
-from letsdoit.utils.misc import inverseRigid
+from utils.misc import inverseRigid
 
 
 class ObjectInstance():

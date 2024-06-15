@@ -31,6 +31,7 @@ class SpatialPrimitivePair:
                 T_world_to_viewpoint: np.ndarray = np.eye(4), 
                 norm_factor: float = 1,
                 reference_2: SpatialPrimitive = None, # Only used if SpatialPrimitive is "between"
+                better_scoring = True,
                 ):
         
         self.target = target
@@ -39,6 +40,7 @@ class SpatialPrimitivePair:
         self.primitive = primitive
         self.T_world_to_viewpoint = T_world_to_viewpoint
         self.norm_factor = norm_factor
+        self.better_scoring = better_scoring
         assert ((T_world_to_viewpoint.shape[0] == 4) and (T_world_to_viewpoint.shape[1] == 4) and (len(T_world_to_viewpoint.shape) == 2))
         self.score = self.get_total_score()
 
@@ -60,7 +62,7 @@ class SpatialPrimitivePair:
 
     def get_total_score(self):
         if self.primitive == SpatialPrimitive.BETWEEN:
-            out = self.target.confidence * self.reference.confidence * self.get_spatial_score() * self.reference_2.confidence
+            out = self.target.confidence * self.reference.confidence * self.reference_2.confidence * self.get_spatial_score()
         else:
             out = self.target.confidence * self.reference.confidence * self.get_spatial_score()
         return out
@@ -92,33 +94,63 @@ class SpatialPrimitivePair:
 
     def _evaluate_above(self) -> int:
         # Target z above reference (higher than reference)
-        z_dist = int(self.target.center_3d[2] > self.reference.center_3d[2])
-        return z_dist
+        if self.better_scoring:
+            dist = self.target.center_3d[2] - self.reference.center_3d[2]
+            res = f_default(dist) * self._evaluate_next_to()
+            return res
+        else:
+            z_dist = int(self.target.center_3d[2] > self.reference.center_3d[2])
+            return z_dist
     
     def _evaluate_below(self) -> int:
         # Target z below reference (lower than reference)
-        z_dist = int(self.target.center_3d[2] < self.reference.center_3d[2])
-        return z_dist
+        if self.better_scoring:
+            dist = self.reference.center_3d[2] - self.target.center_3d[2]
+            res = f_default(dist) * self._evaluate_next_to()
+            return res
+        else:
+            z_dist = int(self.target.center_3d[2] < self.reference.center_3d[2])
+            return z_dist
 
     def _evaluate_front(self) -> int:
         # Target y smaller than reference y (closer than reference)
-        y_dist = int(self.target.center_3d[1] < self.reference.center_3d[1])
-        return y_dist
+        if self.better_scoring:
+            dist = self.reference.center_3d[1] - self.target.center_3d[1]
+            res = f_default(dist) * self._evaluate_next_to()
+            return res
+        else:
+            y_dist = int(self.target.center_3d[1] < self.reference.center_3d[1])
+            return y_dist
 
     def _evaluate_behind(self) -> int:
         # Target y larger than reference y (further than reference)
-        y_dist = int(self.target.center_3d[1] > self.reference.center_3d[1])
-        return y_dist
+        if self.better_scoring:
+            dist = self.target.center_3d[1] - self.reference.center_3d[1]
+            res = f_default(dist) * self._evaluate_next_to()
+            return res 
+        else:
+            y_dist = int(self.target.center_3d[1] > self.reference.center_3d[1])
+            return y_dist
 
     def _evaluate_right(self) -> int:
         # Target x larger than reference x
-        x_dist = int(self.target.center_3d[0] > self.reference.center_3d[0])
-        return x_dist
+        if self.better_scoring:
+            dist = self.target.center_3d[0] - self.reference.center_3d[0]
+            res = f_default(dist) * self._evaluate_next_to()
+            return res
+        else:
+            x_dist = int(self.target.center_3d[0] > self.reference.center_3d[0])
+            return x_dist
 
     def _evaluate_left(self) -> int:
         # Target x smaller than reference x
-        x_dist = int(self.target.center_3d[0] < self.reference.center_3d[0])
-        return x_dist
+        if self.better_scoring:
+            dist = self.reference.center_3d[0] - self.target.center_3d[0]
+            res = f_default(dist) * self._evaluate_next_to()
+            return res
+        else:
+            x_dist = int(self.target.center_3d[0] < self.reference.center_3d[0])
+            return x_dist
 
     def _evaluate_contains(self, eps: float=0.01, thershold=0.95) -> int:
         # epsilon - error on bounding box dimensions
@@ -128,7 +160,10 @@ class SpatialPrimitivePair:
         larger = np.all(self.target.points > min_points, axis=0)
         smaller = np.all(self.target.points < max_points, axis=0)
         points_inside = larger*smaller
-        contains = int((np.sum(points_inside) / len(points_inside)) > thershold)
+        if self.better_scoring:
+            contains = np.sum(points_inside) / len(points_inside)
+        else:
+            contains = int((np.sum(points_inside) / len(points_inside)) > thershold)
         return contains
 
     def _evaluate_between(self, eps: float=0.1, thershold=0.7) -> int:
@@ -140,12 +175,18 @@ class SpatialPrimitivePair:
         larger = np.all(self.target.points > min_points, axis=0)
         smaller = np.all(self.target.points < max_points, axis=0)
         points_inside = larger*smaller
-        contains = int((np.sum(points_inside) / len(points_inside)) > thershold)
+        if self.better_scoring:
+            contains = np.sum(points_inside) / len(points_inside)
+        else:
+            contains = int((np.sum(points_inside) / len(points_inside)) > thershold)
         return contains
 
     def _evaluate_next_to(self) -> float:
         dist = np.linalg.norm(self.target.center_3d - self.reference.center_3d)
-        return dist / self.norm_factor
+        if self.better_scoring:
+            return f_next_to(dist)    
+        else:
+            return dist / self.norm_factor
     
     def plot_3d(self):
         t = copy.copy(t)
@@ -215,3 +256,23 @@ def check_object_type(label: str, primitive: Dict):
     elif (get_primitive(primitive['primitive']) == SpatialPrimitive.BETWEEN) and (label in primitive['reference_object_2']):
         type = ObjectType.REFERENCE_2
     return type
+
+def f_default(x, a=1):
+    x = np.asarray([x])
+    out = []
+    for val in x:
+        if val < a:
+            out.append(val)
+        else:
+            tmp = np.power(val-a, 2)
+            tmp = a*np.exp(-tmp)
+            out.append(tmp)
+    return np.asarray(out)
+
+def f_next_to(x):
+    x = np.asarray([x])
+    out = []
+    for val in x:
+        tmp = np.exp(-np.power(val, 2))
+        out.append(tmp) 
+    return np.asarray(out)

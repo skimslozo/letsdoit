@@ -93,6 +93,7 @@ class Pipeline:
 
     def _run_instruction_block(self, instruction_block: dict):
         visit_id = str(instruction_block['visit_id'])
+        # if visit_id not in ['470508', '483312', '422391', '466803', '467314', '470516', '482296', '483313', '421372', '422014']: return
 
         # load the point cloud
         self.pcd = self.loader.load_pcd(visit_id)
@@ -108,11 +109,16 @@ class Pipeline:
         objects = []
         for object_label in object_labels:
             print(f"Extracting objects for '{object_label}'")
-            objects.extend(self._get_objects_3d(object_label, dict_data))
+            objs = self._get_objects_3d(object_label, dict_data)
+            if len(objs) > 0:
+                objects.extend(objs)
         
         action_objects = []
         for instruction in instructions:
-            action_object = retrieve_best_action_object(instruction, objects)
+            try:
+                action_object = retrieve_best_action_object(instruction, objects)
+            except:
+                action_object = None
 
             if self.path_submission_folder is not None:
                 self._save_instruction_result(visit_id, instruction, [action_object])
@@ -130,7 +136,16 @@ class Pipeline:
         instruction_id = instruction["desc_id"]
         file_name = visit_id + '_'+ instruction_id
 
-        action_masks = [action_object.pcd_mask.astype(np.uint8) for action_object in action_objects]
+        action_masks = []
+        for action_object in action_objects:
+            if action_object is None:
+                # just take an empty mask if the action_object is None
+                action_mask = np.zeros(np.asarray(self.pcd.points).shape[0]).astype(np.uint8)
+            else:
+                # action_mask = [action_object.pcd_mask.astype(np.uint8) for action_object in action_objects]
+                action_mask = action_object.pcd_mask.astype(np.uint8)
+            action_masks.append(action_mask)
+            
         confidences = [1. for _ in action_objects]  # TODO: decide how to assign the mask confidence
 
         dir_predicted_masks = 'predicted_masks'  # following submission convention
@@ -183,6 +198,7 @@ class Pipeline:
 
     def _get_objects_3d(self, object_label: str, dict_data: dict) -> List[Object3D]:
         object_instances = self._get_object_instances(object_label, dict_data)
+        if len(object_instances) == 0: return []
         objects_3d = self.masks_merger(object_instances, self.pcd, object_proximity_thresh=self.object_proximity_thresh)
         denoise_objects_3d(objects_3d)
         return objects_3d
@@ -200,6 +216,8 @@ class Pipeline:
 
         # Masks we get here as outputs are for the upright-rotated images
         image_ids, masks, bboxes, confidences, labels = self.masks_finder.get_masks_from_imgs(best_images_rotated, object_label)
+        if len(image_ids) == 0:
+            return []
 
         # Rotate masks and bboxes back to the rotation of the original image
         mask_image_sizes = [best_images_rotated[idx].shape[:-1] for idx in image_ids]

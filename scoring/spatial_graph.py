@@ -86,8 +86,8 @@ class GraphNode:
                     for i, (c1, c2) in enumerate(child_combs):
                         c1_index = self.all_objs.index(c1)
                         c2_index = self.all_objs.index(c2)
-                        if c1_index in self.used_indices or c2_index in self.used_indices:
-                            continue  # Skip already used objects
+                        # if c1_index in self.used_indices or c2_index in self.used_indices:
+                        #     continue  # Skip already used objects
                         objs = [(otype, self.object), (c1_otype, c1), (c2_otype, c2)]
                         spp = SpatialPrimitivePair.from_list(objs)
                         self.edges.append(spp)
@@ -120,8 +120,8 @@ class GraphNode:
                     children_instances, child_otype = self._create_children_instances(otype, prim)
                     for i, child in enumerate(children_instances):
                         child_index = self.all_objs.index(child)
-                        if child_index in self.used_indices:
-                            continue  # Skip already used objects
+                        # if child_index in self.used_indices:
+                        #     continue  # Skip already used objects
                         objs = [(otype, self.object), (child_otype, child)]
                         spp = SpatialPrimitivePair.from_list(objs, prim)
                         self.edges.append(spp)

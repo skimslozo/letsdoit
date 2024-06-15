@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(cwd))
 from pipeline.pipeline import Pipeline
 
 
-path_config = '/teamspace/studios/this_studio/letsdoit/config/config_dev.yml'
+path_config = '/teamspace/studios/this_studio/letsdoit/config/config_test.yml'
 
 def main():
 

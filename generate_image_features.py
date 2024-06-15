@@ -24,7 +24,7 @@ def generate_image_features():
 
     visit_ids = loader.visit_ids
     for visit_id in visit_ids:
-        if visit_id in ['423448', '470806', '470811', '472483']: continue #'470352'
+        #if visit_id in ['423448', '470806', '470811', '472483']: continue #'470352'
         path_image_features = loader.get_image_features_path(visit_id)
 
         # skip if image features have already been generated

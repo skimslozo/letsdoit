@@ -1,10 +1,10 @@
 path_dataset: '/teamspace/studios/this_studio/dataset'
-path_instructions: '/teamspace/studios/this_studio/letsdoit/sample_instructions.json'
+path_instructions: '/teamspace/studios/this_studio/letsdoit/descriptions_out.json'
 data_asset_type: 'wide'
 data_split: 'test'
 loader_sample_freq: 1
 retriever_topk: 10
-retriever_max_similarity_thresh: 0.97
+retriever_max_similarity_thresh: 0.91
 finder_box_threshold: 0.3
 finder_text_threshold: 0.25
 merger_dist_thresh: 0.1
